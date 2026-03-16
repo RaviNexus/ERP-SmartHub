@@ -16,12 +16,13 @@ const redis_service_1 = require("./redis.service");
 const kafka_service_1 = require("./kafka.service");
 const health_controller_1 = require("./health.controller");
 const auth_module_1 = require("./auth/auth.module");
+const products_module_1 = require("./products/products.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
 exports.AppModule = AppModule = __decorate([
     (0, common_1.Module)({
-        imports: [config_module_1.ConfigModule, auth_module_1.AuthModule],
+        imports: [config_module_1.ConfigModule, auth_module_1.AuthModule, products_module_1.ProductsModule],
         controllers: [app_controller_1.AppController, health_controller_1.HealthController],
         providers: [app_service_1.AppService, database_service_1.DatabaseService, redis_service_1.RedisService, kafka_service_1.KafkaService],
     })

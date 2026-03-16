@@ -15,10 +15,24 @@ async function bootstrap() {
     app.use((0, helmet_1.default)());
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
     const config = app.get(config_service_1.ConfigService);
-    app.enableCors({ origin: config.corsOrigin ?? true, credentials: true });
+    const allowList = new Set(config.corsOrigins);
+    app.enableCors({
+        origin: (origin, callback) => {
+            if (!origin)
+                return callback(null, true);
+            if (allowList.size === 0)
+                return callback(null, true);
+            if (allowList.has(origin))
+                return callback(null, true);
+            return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+        },
+        credentials: true,
+    });
     await (0, swagger_1.setupSwagger)(app, config);
     await app.listen(config.port);
     // eslint-disable-next-line no-console
     console.log(`${config.appName} listening on http://localhost:${config.port}`);
+    // eslint-disable-next-line no-console
+    console.log(`CORS allowlist: ${allowList.size ? Array.from(allowList).join(', ') : 'ALL'}`);
 }
 bootstrap();

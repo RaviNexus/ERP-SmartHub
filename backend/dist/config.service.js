@@ -26,8 +26,14 @@ let ConfigService = class ConfigService {
     get kafkaBrokers() {
         return this.env.kafkaBrokersList;
     }
-    get corsOrigin() {
-        return this.env.CORS_ORIGIN;
+    get corsOrigins() {
+        const raw = this.env.CORS_ORIGIN;
+        if (!raw)
+            return [];
+        return raw
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean);
     }
     get jwtSecret() {
         return this.env.JWT_SECRET;

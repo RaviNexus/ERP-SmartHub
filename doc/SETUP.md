@@ -24,7 +24,12 @@ cp frontend/.env.example frontend/.env
 ```powershell
 pnpm.cmd install
 ```
-4) Run apps:
+4) Run migrations + seed super admin:
+```powershell
+pnpm --filter erp-backend migrate
+pnpm --filter erp-backend seed:admin
+```
+5) Run apps:
 ```powershell
 pnpm --filter erp-backend start:dev   # http://localhost:3000
 pnpm --filter erp-frontend dev        # http://localhost:5173
@@ -36,6 +41,8 @@ docker compose up -d                 # starts Postgres/Redis/Kafka only
 pnpm.cmd install
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
+pnpm --filter erp-backend migrate
+pnpm --filter erp-backend seed:admin
 pnpm --filter erp-backend start:dev
 pnpm --filter erp-frontend dev
 ```

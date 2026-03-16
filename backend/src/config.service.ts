@@ -25,8 +25,13 @@ export class ConfigService {
     return this.env.kafkaBrokersList;
   }
 
-  get corsOrigin() {
-    return this.env.CORS_ORIGIN;
+  get corsOrigins(): string[] {
+    const raw = this.env.CORS_ORIGIN;
+    if (!raw) return [];
+    return raw
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
   }
 
   get jwtSecret() {
