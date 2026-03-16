@@ -13,36 +13,38 @@
                     "migrate":  "ts-node scripts/migrate.ts"
                 },
     "dependencies":  {
-                         "@nestjs/common":  "11.1.16",
-                         "@nestjs/core":  "11.1.16",
-                         "@nestjs/platform-express":  "11.1.16",
+                         "@nestjs/common":  "11.0.16",
+                         "@nestjs/core":  "11.0.16",
+                         "@nestjs/platform-express":  "11.0.16",
                          "reflect-metadata":  "0.2.2",
                          "rxjs":  "7.8.1",
                          "class-validator":  "0.14.1",
                          "class-transformer":  "0.5.1",
                          "pg":  "8.12.0",
-                         "kafkajs":  "2.3.4",
+                         "kafkajs":  "2.2.4",
                          "ioredis":  "5.4.2",
                          "helmet":  "7.1.0",
-                         "csurf":  "1.12.0",
+                         "csurf":  "1.11.0",
                          "@opentelemetry/api":  "1.9.0",
                          "@opentelemetry/sdk-node":  "0.55.0",
                          "pino":  "9.5.0",
-                         "zod":  "4.24.3"
+                         "zod":  "4.3.6",
+                         "dotenv":  "16.4.5"
                      },
     "devDependencies":  {
-                            "@nestjs/cli":  "11.1.1",
-                            "@nestjs/schematics":  "11.1.0",
+                            "@nestjs/cli":  "11.0.16",
+                            "@nestjs/schematics":  "11.0.9",
                             "@types/express":  "4.17.21",
                             "@types/node":  "20.11.30",
-                            "typescript":  "5.9.0",
+                            "typescript":  "5.9.3",
                             "ts-node":  "10.9.2",
-                            "eslint":  "9.1.0",
+                            "eslint":  "8.57.0",
                             "@typescript-eslint/parser":  "7.1.1",
                             "@typescript-eslint/eslint-plugin":  "7.1.1",
                             "jest":  "29.7.0",
                             "@types/jest":  "29.5.11",
-                            "ts-jest":  "29.1.2"
+                            "ts-jest":  "29.1.2",
+                            "@types/pg":  "8.11.10"
                         },
     "engines":  {
                     "node":  "\u003e=24 \u003c25"

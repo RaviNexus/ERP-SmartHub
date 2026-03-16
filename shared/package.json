@@ -1,18 +1,20 @@
 {
-  "name": "@smarthub/shared",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
-  },
-  "dependencies": {
-    "zod": "4.24.3"
-  },
-  "devDependencies": {
-    "typescript": "5.9.0"
-  },
-  "engines": { "node": ">=24 <25" }
+    "name":  "@smarthub/shared",
+    "version":  "0.0.1",
+    "private":  true,
+    "type":  "module",
+    "main":  "dist/index.js",
+    "types":  "dist/index.d.ts",
+    "scripts":  {
+                    "build":  "tsc -p tsconfig.json"
+                },
+    "dependencies":  {
+                         "zod":  "4.3.6"
+                     },
+    "devDependencies":  {
+                            "typescript":  "5.9.3"
+                        },
+    "engines":  {
+                    "node":  "\u003e=24 \u003c25"
+                }
 }

@@ -1,42 +1,42 @@
 {
-  "_note": "Frontend template pinned per ADR 0001; adjust only via new ADR.",
-  "name": "erp-frontend",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-router-dom": "7.0.0",
-    "@tanstack/react-query": "5.60.0",
-    "axios": "1.7.2",
-    "zod": "4.24.3",
-    "zustand": "5.0.0",
-    "@mantine/core": "7.10.1",
-    "@mantine/hooks": "7.10.1",
-    "@emotion/react": "11.13.0",
-    "@emotion/styled": "11.13.0",
-    "lucide-react": "0.365.0"
-  },
-  "devDependencies": {
-    "typescript": "5.9.0",
-    "vite": "7.3.1",
-    "@vitejs/plugin-react": "5.1.0",
-    "vitest": "1.6.0",
-    "eslint": "9.1.0",
-    "@typescript-eslint/parser": "7.1.1",
-    "@typescript-eslint/eslint-plugin": "7.1.1",
-    "eslint-plugin-react": "7.34.0",
-    "eslint-plugin-react-hooks": "5.0.0"
-  },
-  "engines": {
-    "node": ">=24 <25"
-  }
+    "_note":  "Frontend template pinned per ADR 0001; adjust only via new ADR.",
+    "name":  "erp-frontend",
+    "version":  "0.0.1",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "vite build",
+                    "preview":  "vite preview",
+                    "lint":  "eslint \"src/**/*.{ts,tsx}\"",
+                    "test":  "vitest"
+                },
+    "dependencies":  {
+                         "react":  "18.2.0",
+                         "react-dom":  "18.2.0",
+                         "react-router-dom":  "6.22.3",
+                         "@tanstack/react-query":  "5.90.21",
+                         "axios":  "1.7.2",
+                         "zod":  "4.3.6",
+                         "zustand":  "5.0.0",
+                         "@mantine/core":  "7.10.1",
+                         "@mantine/hooks":  "7.10.1",
+                         "@emotion/react":  "11.13.0",
+                         "@emotion/styled":  "11.13.0",
+                         "lucide-react":  "0.365.0"
+                     },
+    "devDependencies":  {
+                            "typescript":  "5.9.3",
+                            "vite":  "7.3.1",
+                            "@vitejs/plugin-react":  "5.1.0",
+                            "vitest":  "1.6.0",
+                            "eslint":  "8.57.0",
+                            "@typescript-eslint/parser":  "7.1.1",
+                            "@typescript-eslint/eslint-plugin":  "7.1.1",
+                            "eslint-plugin-react":  "7.34.0",
+                            "eslint-plugin-react-hooks":  "5.0.0"
+                        },
+    "engines":  {
+                    "node":  "\u003e=24 \u003c25"
+                }
 }

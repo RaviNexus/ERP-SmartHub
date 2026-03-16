@@ -1,0 +1,36 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ConfigService = void 0;
+const common_1 = require("@nestjs/common");
+const env_1 = require("./env");
+let ConfigService = class ConfigService {
+    env = (0, env_1.loadEnv)();
+    get appName() {
+        return this.env.APP_NAME;
+    }
+    get port() {
+        return this.env.PORT;
+    }
+    get databaseUrl() {
+        return this.env.DATABASE_URL;
+    }
+    get redisUrl() {
+        return this.env.REDIS_URL;
+    }
+    get kafkaBrokers() {
+        return this.env.kafkaBrokersList;
+    }
+    get corsOrigin() {
+        return this.env.CORS_ORIGIN;
+    }
+};
+exports.ConfigService = ConfigService;
+exports.ConfigService = ConfigService = __decorate([
+    (0, common_1.Injectable)()
+], ConfigService);
