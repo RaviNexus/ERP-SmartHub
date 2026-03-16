@@ -1,0 +1,680 @@
+import { useState } from "react";
+
+const modules = {
+  AUTH: {
+    label: "Auth & Users",
+    color: "#6366f1",
+    bg: "#eef2ff",
+    border: "#6366f1",
+    tables: ["tenants", "users", "roles", "permissions", "role_permissions", "sessions", "audit_logs"]
+  },
+  COMPANY: {
+    label: "Company Setup",
+    color: "#0891b2",
+    bg: "#ecfeff",
+    border: "#0891b2",
+    tables: ["companies", "branches", "industry_config", "fiscal_years", "currency_settings", "tax_slabs", "cost_centers"]
+  },
+  CRM: {
+    label: "CRM",
+    color: "#16a34a",
+    bg: "#f0fdf4",
+    border: "#16a34a",
+    tables: ["leads", "customers", "activities", "segments", "segment_members"]
+  },
+  INVENTORY: {
+    label: "Inventory",
+    color: "#d97706",
+    bg: "#fffbeb",
+    border: "#d97706",
+    tables: ["products", "product_variants", "categories", "warehouses", "stock_ledger", "stock_summary", "stock_transfers"]
+  },
+  SALES: {
+    label: "Sales",
+    color: "#dc2626",
+    bg: "#fef2f2",
+    border: "#dc2626",
+    tables: ["sales_documents", "sales_line_items", "payment_receipts", "receipt_allocations", "credit_notes"]
+  },
+  PURCHASE: {
+    label: "Purchase",
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+    border: "#7c3aed",
+    tables: ["vendors", "purchase_requests", "purchase_orders", "po_line_items", "goods_receipt_notes", "vendor_bills", "vendor_payments"]
+  },
+  FINANCE: {
+    label: "Finance",
+    color: "#065f46",
+    bg: "#ecfdf5",
+    border: "#065f46",
+    tables: ["chart_of_accounts", "journal_entries", "journal_line_items", "ledger_entries", "bank_reconciliations", "expenses", "budgets", "budget_lines", "tax_filings", "fixed_assets"]
+  },
+  HR: {
+    label: "HR & Payroll",
+    color: "#b45309",
+    bg: "#fef3c7",
+    border: "#b45309",
+    tables: ["departments", "designations", "employees", "salary_structures", "attendance", "leave_types", "leave_balances", "leave_applications", "payroll_runs", "payslips", "employee_loans", "performance_reviews", "employee_exits"]
+  },
+  PROJECTS: {
+    label: "Projects",
+    color: "#0f766e",
+    bg: "#f0fdfa",
+    border: "#0f766e",
+    tables: ["projects", "project_members", "milestones", "tasks", "task_comments", "time_entries", "project_expenses"]
+  },
+  SUBSCRIPTION: {
+    label: "Subscription",
+    color: "#be185d",
+    bg: "#fdf2f8",
+    border: "#be185d",
+    tables: ["subscription_plans", "tenant_subscriptions", "payment_methods", "billing_invoices", "payment_attempts", "coupons", "coupon_redemptions", "usage_tracking"]
+  }
+};
+
+const tableDefinitions = {
+  tenants: {
+    pk: "id (UUID)",
+    fields: ["company_name VARCHAR(100)", "subdomain VARCHAR(50)", "plan_id → subscription_plans", "trial_ends_at TIMESTAMP", "status ENUM"]
+  },
+  users: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "role_id → roles", "department_id → departments"],
+    fields: ["full_name VARCHAR(100)", "email VARCHAR(150)", "phone VARCHAR(15)", "password_hash VARCHAR(255)", "status ENUM", "two_fa_enabled BOOL", "last_login_at TIMESTAMP"]
+  },
+  roles: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["name VARCHAR(50)", "description VARCHAR(200)", "is_default BOOL", "is_system_role BOOL"]
+  },
+  permissions: {
+    pk: "id (UUID)",
+    fields: ["module VARCHAR(50)", "action ENUM(view,create,edit,delete,export,approve)", "description VARCHAR(100)"]
+  },
+  role_permissions: {
+    pk: "role_id + permission_id",
+    fk: ["role_id → roles", "permission_id → permissions"],
+    fields: []
+  },
+  sessions: {
+    pk: "id (UUID)",
+    fk: ["user_id → users"],
+    fields: ["refresh_token VARCHAR(255)", "ip_address VARCHAR(45)", "device_info VARCHAR(255)", "expires_at TIMESTAMP"]
+  },
+  audit_logs: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "user_id → users"],
+    fields: ["action VARCHAR(100)", "module VARCHAR(50)", "record_id UUID", "old_values JSONB", "new_values JSONB"]
+  },
+  companies: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["name VARCHAR(100)", "gst_number VARCHAR(20)", "company_type ENUM", "email VARCHAR(150)", "address JSONB", "logo_url VARCHAR(255)", "primary_color VARCHAR(7)"]
+  },
+  branches: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "company_id → companies", "manager_id → users"],
+    fields: ["name VARCHAR(100)", "code VARCHAR(10)", "branch_type ENUM", "city VARCHAR(50)", "is_hq BOOL", "status ENUM"]
+  },
+  industry_config: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["industry_type VARCHAR(50)", "sub_industry VARCHAR(50)", "enabled_modules JSONB", "default_uom VARCHAR(20)"]
+  },
+  fiscal_years: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "closed_by → users"],
+    fields: ["label VARCHAR(20)", "start_date DATE", "end_date DATE", "is_active BOOL", "is_locked BOOL"]
+  },
+  currency_settings: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["base_currency VARCHAR(3)", "decimal_places SMALLINT", "date_format VARCHAR(20)", "number_format ENUM"]
+  },
+  tax_slabs: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["name VARCHAR(50)", "rate DECIMAL(5,2)", "tax_system ENUM", "is_composite BOOL", "components JSONB"]
+  },
+  cost_centers: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "parent_id → cost_centers"],
+    fields: ["name VARCHAR(50)", "type ENUM(dept,branch,project)", "status ENUM"]
+  },
+  leads: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "assigned_to → users", "customer_id → customers"],
+    fields: ["title VARCHAR(100)", "contact_name VARCHAR(100)", "email VARCHAR(150)", "phone VARCHAR(15)", "source ENUM", "stage ENUM", "priority ENUM", "expected_revenue DECIMAL", "lead_score SMALLINT"]
+  },
+  customers: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "assigned_rep → users", "lead_id → leads"],
+    fields: ["customer_code VARCHAR(20)", "name VARCHAR(100)", "customer_type ENUM", "email VARCHAR(150)", "phone VARCHAR(15)", "gst_number VARCHAR(20)", "billing_address JSONB", "payment_terms ENUM", "credit_limit DECIMAL", "lifecycle_stage ENUM"]
+  },
+  activities: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "assigned_to → users", "created_by → users"],
+    fields: ["activity_type ENUM", "linked_type ENUM(lead,customer)", "linked_id UUID", "activity_at TIMESTAMP", "outcome ENUM", "description TEXT", "next_followup_at TIMESTAMP"]
+  },
+  segments: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "created_by → users"],
+    fields: ["name VARCHAR(50)", "filter_rules JSONB", "auto_refresh BOOL", "member_count INT"]
+  },
+  segment_members: {
+    pk: "segment_id + customer_id",
+    fk: ["segment_id → segments", "customer_id → customers"],
+    fields: []
+  },
+  products: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "category_id → categories", "tax_slab_id → tax_slabs", "default_warehouse → warehouses"],
+    fields: ["name VARCHAR(150)", "sku VARCHAR(50)", "product_type ENUM", "uom VARCHAR(20)", "purchase_price DECIMAL", "selling_price DECIMAL", "reorder_level DECIMAL", "barcode VARCHAR(50)", "track_batches BOOL", "status ENUM"]
+  },
+  product_variants: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "parent_id → products"],
+    fields: ["sku VARCHAR(50)", "attributes JSONB", "purchase_price DECIMAL", "selling_price DECIMAL", "barcode VARCHAR(50)"]
+  },
+  categories: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "parent_id → categories", "default_tax_id → tax_slabs"],
+    fields: ["name VARCHAR(50)", "description VARCHAR(200)", "status ENUM"]
+  },
+  warehouses: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "branch_id → branches", "manager_id → users"],
+    fields: ["name VARCHAR(100)", "code VARCHAR(10)", "address JSONB", "status ENUM"]
+  },
+  stock_ledger: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "product_id → products", "warehouse_id → warehouses", "created_by → users"],
+    fields: ["movement_type ENUM", "reference_type VARCHAR(50)", "reference_id UUID", "batch_number VARCHAR(50)", "expiry_date DATE", "quantity DECIMAL", "unit_cost DECIMAL", "running_stock DECIMAL"]
+  },
+  stock_summary: {
+    pk: "product_id + warehouse_id",
+    fk: ["tenant_id → tenants", "product_id → products", "warehouse_id → warehouses"],
+    fields: ["current_stock DECIMAL", "avg_cost DECIMAL", "last_updated TIMESTAMP"]
+  },
+  stock_transfers: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "from_warehouse → warehouses", "to_warehouse → warehouses", "created_by → users"],
+    fields: ["transfer_date DATE", "status ENUM", "items JSONB", "expected_arrival DATE"]
+  },
+  sales_documents: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "customer_id → customers", "branch_id → branches", "warehouse_id → warehouses", "sales_rep_id → users", "source_doc_id → sales_documents"],
+    fields: ["doc_type ENUM(quotation,so,invoice)", "doc_number VARCHAR(30)", "doc_date DATE", "due_date DATE", "subtotal DECIMAL", "total_tax DECIMAL", "grand_total DECIMAL", "paid_amount DECIMAL", "status ENUM"]
+  },
+  sales_line_items: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "document_id → sales_documents", "product_id → products", "tax_slab_id → tax_slabs"],
+    fields: ["description VARCHAR(200)", "quantity DECIMAL", "unit_price DECIMAL", "line_discount_pct DECIMAL", "tax_amount DECIMAL", "line_total DECIMAL"]
+  },
+  payment_receipts: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "customer_id → customers", "created_by → users"],
+    fields: ["receipt_number VARCHAR(30)", "receipt_date DATE", "amount DECIMAL", "payment_mode VARCHAR(20)", "transaction_ref VARCHAR(50)", "status ENUM"]
+  },
+  receipt_allocations: {
+    pk: "id (UUID)",
+    fk: ["receipt_id → payment_receipts", "invoice_id → sales_documents"],
+    fields: ["allocated_amount DECIMAL"]
+  },
+  credit_notes: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "invoice_id → sales_documents", "customer_id → customers", "created_by → users"],
+    fields: ["cn_number VARCHAR(30)", "issue_date DATE", "reason VARCHAR(50)", "items JSONB", "total_amount DECIMAL", "apply_to ENUM", "status ENUM"]
+  },
+  vendors: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "created_by → users"],
+    fields: ["vendor_code VARCHAR(20)", "name VARCHAR(100)", "vendor_type ENUM", "email VARCHAR(150)", "phone VARCHAR(15)", "gst_number VARCHAR(20)", "payment_terms VARCHAR(20)", "bank_details JSONB", "rating DECIMAL", "status ENUM"]
+  },
+  purchase_requests: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "department_id → departments", "requested_by → users", "approved_by → users", "branch_id → branches", "po_id → purchase_orders"],
+    fields: ["pr_number VARCHAR(30)", "request_date DATE", "required_by DATE", "items JSONB", "priority ENUM", "justification TEXT", "status ENUM"]
+  },
+  purchase_orders: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "vendor_id → vendors", "pr_id → purchase_requests", "created_by → users"],
+    fields: ["po_number VARCHAR(30)", "po_date DATE", "expected_delivery DATE", "subtotal DECIMAL", "total_tax DECIMAL", "grand_total DECIMAL", "status ENUM"]
+  },
+  po_line_items: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "po_id → purchase_orders", "product_id → products", "tax_slab_id → tax_slabs"],
+    fields: ["ordered_qty DECIMAL", "received_qty DECIMAL", "unit_price DECIMAL", "line_total DECIMAL"]
+  },
+  goods_receipt_notes: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "po_id → purchase_orders", "vendor_id → vendors", "warehouse_id → warehouses", "created_by → users"],
+    fields: ["grn_number VARCHAR(30)", "grn_date DATE", "items JSONB", "landed_costs JSONB", "status ENUM"]
+  },
+  vendor_bills: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "vendor_id → vendors", "po_id → purchase_orders", "grn_id → goods_receipt_notes", "created_by → users"],
+    fields: ["bill_number VARCHAR(30)", "vendor_invoice_no VARCHAR(50)", "bill_date DATE", "due_date DATE", "grand_total DECIMAL", "paid_amount DECIMAL", "status ENUM"]
+  },
+  vendor_payments: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "vendor_id → vendors", "created_by → users"],
+    fields: ["payment_number VARCHAR(30)", "payment_date DATE", "amount DECIMAL", "payment_mode VARCHAR(20)", "allocations JSONB"]
+  },
+  chart_of_accounts: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "parent_id → chart_of_accounts", "cost_center_id → cost_centers"],
+    fields: ["code VARCHAR(10)", "name VARCHAR(100)", "account_type ENUM", "account_group VARCHAR(50)", "is_group BOOL", "opening_balance DECIMAL", "is_bank_account BOOL", "status ENUM"]
+  },
+  journal_entries: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "fiscal_year_id → fiscal_years", "cost_center_id → cost_centers", "reversed_by → journal_entries", "created_by → users"],
+    fields: ["journal_number VARCHAR(30)", "journal_date DATE", "journal_type ENUM", "narration TEXT", "total_debit DECIMAL", "total_credit DECIMAL", "status ENUM"]
+  },
+  journal_line_items: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "journal_id → journal_entries", "account_id → chart_of_accounts", "cost_center_id → cost_centers"],
+    fields: ["debit_amount DECIMAL", "credit_amount DECIMAL", "narration VARCHAR(200)"]
+  },
+  ledger_entries: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "account_id → chart_of_accounts", "journal_id → journal_entries", "fiscal_year_id → fiscal_years"],
+    fields: ["entry_date DATE", "debit_amount DECIMAL", "credit_amount DECIMAL", "running_balance DECIMAL", "balance_type ENUM"]
+  },
+  bank_reconciliations: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "bank_account_id → chart_of_accounts", "completed_by → users"],
+    fields: ["period_month SMALLINT", "period_year SMALLINT", "opening_balance DECIMAL", "closing_balance DECIMAL", "erp_balance DECIMAL", "status ENUM"]
+  },
+  expenses: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "account_id → chart_of_accounts", "employee_id → employees", "cost_center_id → cost_centers", "journal_id → journal_entries", "created_by → users"],
+    fields: ["expense_number VARCHAR(30)", "expense_date DATE", "category VARCHAR(50)", "amount DECIMAL", "payment_mode VARCHAR(20)", "receipt_url VARCHAR(255)", "reimb_status ENUM"]
+  },
+  budgets: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "fiscal_year_id → fiscal_years", "cost_center_id → cost_centers", "created_by → users"],
+    fields: ["name VARCHAR(100)", "budget_type ENUM", "alert_threshold SMALLINT", "status ENUM"]
+  },
+  budget_lines: {
+    pk: "id (UUID)",
+    fk: ["budget_id → budgets", "account_id → chart_of_accounts"],
+    fields: ["jan–dec DECIMAL (×12)", "annual_total DECIMAL"]
+  },
+  tax_filings: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "filed_by → users"],
+    fields: ["return_type ENUM", "period_month SMALLINT", "period_year SMALLINT", "output_tax DECIMAL", "input_credit DECIMAL", "net_payable DECIMAL", "payment_ref VARCHAR(50)", "status ENUM"]
+  },
+  fixed_assets: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "account_id → chart_of_accounts", "dep_account_id → chart_of_accounts"],
+    fields: ["asset_name VARCHAR(100)", "purchase_date DATE", "cost DECIMAL", "useful_life_years SMALLINT", "depreciation_method ENUM", "net_book_value DECIMAL", "status ENUM"]
+  },
+  departments: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "head_id → employees", "parent_id → departments", "cost_center_id → cost_centers"],
+    fields: ["name VARCHAR(100)", "code VARCHAR(10)", "status ENUM"]
+  },
+  designations: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "department_id → departments"],
+    fields: ["name VARCHAR(100)", "grade VARCHAR(20)", "status ENUM"]
+  },
+  employees: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "user_id → users", "department_id → departments", "designation_id → designations", "manager_id → employees", "branch_id → branches"],
+    fields: ["employee_id VARCHAR(20)", "first_name VARCHAR(50)", "last_name VARCHAR(50)", "dob DATE", "personal_email VARCHAR(150)", "personal_phone VARCHAR(15)", "pan_number VARCHAR(15)", "bank_details JSONB", "status ENUM"]
+  },
+  salary_structures: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees"],
+    fields: ["effective_from DATE", "ctc_annual DECIMAL", "basic_pct DECIMAL", "hra_pct DECIMAL", "gross_monthly DECIMAL", "tax_regime ENUM", "is_active BOOL"]
+  },
+  attendance: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "approved_by → users"],
+    fields: ["attendance_date DATE", "status ENUM", "check_in TIME", "check_out TIME", "overtime_hours DECIMAL", "is_late BOOL", "source ENUM"]
+  },
+  leave_types: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["name VARCHAR(50)", "code VARCHAR(10)", "days_per_year DECIMAL", "carry_forward_max DECIMAL", "encashable BOOL", "is_paid BOOL", "status ENUM"]
+  },
+  leave_balances: {
+    pk: "employee_id + leave_type_id + year",
+    fk: ["tenant_id → tenants", "employee_id → employees", "leave_type_id → leave_types"],
+    fields: ["year SMALLINT", "opening_balance DECIMAL", "accrued DECIMAL", "taken DECIMAL", "balance DECIMAL"]
+  },
+  leave_applications: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "leave_type_id → leave_types", "approved_by → users"],
+    fields: ["from_date DATE", "to_date DATE", "days DECIMAL", "reason TEXT", "status ENUM"]
+  },
+  payroll_runs: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "branch_id → branches", "approved_by → users", "journal_id → journal_entries", "created_by → users"],
+    fields: ["run_month SMALLINT", "run_year SMALLINT", "working_days SMALLINT", "total_gross DECIMAL", "total_net DECIMAL", "status ENUM"]
+  },
+  payslips: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "payroll_run_id → payroll_runs", "employee_id → employees"],
+    fields: ["pay_month SMALLINT", "pay_year SMALLINT", "working_days SMALLINT", "lop_days DECIMAL", "earnings JSONB", "deductions JSONB", "gross_salary DECIMAL", "net_salary DECIMAL"]
+  },
+  employee_loans: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "approved_by → users"],
+    fields: ["loan_type ENUM", "amount DECIMAL", "repayment_months SMALLINT", "emi_amount DECIMAL", "outstanding DECIMAL", "status ENUM"]
+  },
+  performance_reviews: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "reviewer_id → employees", "finalized_by → users"],
+    fields: ["review_period ENUM", "review_year SMALLINT", "kras JSONB", "overall_score DECIMAL", "rating SMALLINT", "increment_pct DECIMAL", "status ENUM"]
+  },
+  employee_exits: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "journal_id → journal_entries"],
+    fields: ["resignation_date DATE", "last_working_day DATE", "exit_reason ENUM", "net_ff_amount DECIMAL", "ff_paid_on DATE"]
+  },
+  projects: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "client_id → customers", "project_manager → users", "created_by → users"],
+    fields: ["project_code VARCHAR(20)", "name VARCHAR(150)", "project_type ENUM", "start_date DATE", "end_date DATE", "budget DECIMAL", "status ENUM", "priority ENUM"]
+  },
+  project_members: {
+    pk: "project_id + user_id",
+    fk: ["project_id → projects", "user_id → users", "employee_id → employees"],
+    fields: ["role ENUM", "billing_rate DECIMAL", "cost_rate DECIMAL", "allocated_hours DECIMAL"]
+  },
+  milestones: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "project_id → projects"],
+    fields: ["name VARCHAR(100)", "due_date DATE", "billing_pct DECIMAL", "status ENUM"]
+  },
+  tasks: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "project_id → projects", "milestone_id → milestones", "parent_task_id → tasks", "assigned_to → users", "created_by → users"],
+    fields: ["task_number INT", "name VARCHAR(200)", "task_type ENUM", "priority ENUM", "due_date DATE", "estimated_hours DECIMAL", "logged_hours DECIMAL", "status ENUM", "completion_pct SMALLINT"]
+  },
+  task_comments: {
+    pk: "id (UUID)",
+    fk: ["task_id → tasks", "user_id → users"],
+    fields: ["comment TEXT", "attachments JSONB", "is_edited BOOL"]
+  },
+  time_entries: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "employee_id → employees", "project_id → projects", "task_id → tasks", "approved_by → users"],
+    fields: ["entry_date DATE", "hours DECIMAL", "description TEXT", "is_billable BOOL", "billing_rate DECIMAL", "billable_amount DECIMAL", "status ENUM"]
+  },
+  project_expenses: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "project_id → projects", "expense_id → expenses"],
+    fields: ["is_billable BOOL", "billed_amount DECIMAL"]
+  },
+  subscription_plans: {
+    pk: "id (UUID)",
+    fields: ["name VARCHAR(50)", "code ENUM(starter,growth,enterprise)", "price_monthly DECIMAL", "price_annual DECIMAL", "max_users SMALLINT", "storage_gb SMALLINT", "features JSONB"]
+  },
+  tenant_subscriptions: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "plan_id → subscription_plans"],
+    fields: ["billing_cycle ENUM", "status ENUM", "trial_ends_at TIMESTAMP", "current_period_end TIMESTAMP", "cancel_at TIMESTAMP", "gateway_sub_id VARCHAR(100)"]
+  },
+  payment_methods: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants"],
+    fields: ["method_type ENUM", "gateway ENUM", "gateway_token VARCHAR(255)", "card_last4 VARCHAR(4)", "card_brand VARCHAR(20)", "is_default BOOL"]
+  },
+  billing_invoices: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "plan_id → subscription_plans", "coupon_id → coupons"],
+    fields: ["invoice_number VARCHAR(30)", "period_start DATE", "period_end DATE", "subtotal DECIMAL", "total_amount DECIMAL", "status ENUM", "paid_at TIMESTAMP"]
+  },
+  payment_attempts: {
+    pk: "id (UUID)",
+    fk: ["tenant_id → tenants", "invoice_id → billing_invoices"],
+    fields: ["amount DECIMAL", "gateway VARCHAR(20)", "status ENUM", "failure_reason TEXT"]
+  },
+  coupons: {
+    pk: "id (UUID)",
+    fields: ["code VARCHAR(20)", "coupon_type ENUM", "discount_value DECIMAL", "applies_to ENUM", "max_uses INT", "valid_from DATE", "valid_until DATE", "status ENUM"]
+  },
+  coupon_redemptions: {
+    pk: "id (UUID)",
+    fk: ["coupon_id → coupons", "tenant_id → tenants", "invoice_id → billing_invoices"],
+    fields: ["discount_applied DECIMAL", "redeemed_at TIMESTAMP"]
+  },
+  usage_tracking: {
+    pk: "tenant_id + tracked_date",
+    fk: ["tenant_id → tenants"],
+    fields: ["user_count SMALLINT", "branch_count SMALLINT", "storage_used_mb INT", "api_calls_today INT"]
+  }
+};
+
+const moduleOrder = Object.keys(modules);
+
+export default function ERD() {
+  const [activeModule, setActiveModule] = useState(null);
+  const [activeTable, setActiveTable] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const allTables = Object.entries(modules).flatMap(([mod, info]) =>
+    info.tables.map(t => ({ table: t, mod, info }))
+  );
+
+  const filtered = search.trim()
+    ? allTables.filter(({ table }) => table.toLowerCase().includes(search.toLowerCase()))
+    : allTables;
+
+  const visibleModules = search.trim()
+    ? [...new Set(filtered.map(f => f.mod))]
+    : (activeModule ? [activeModule] : moduleOrder);
+
+  const tableInfo = activeTable ? tableDefinitions[activeTable] : null;
+  const activeTableMod = activeTable ? allTables.find(t => t.table === activeTable)?.mod : null;
+  const activeModColor = activeTableMod ? modules[activeTableMod].color : "#6366f1";
+
+  return (
+    <div style={{ fontFamily: "'Inter', sans-serif", background: "#f8fafc", minHeight: "100vh", padding: 0 }}>
+      {/* Header */}
+      <div style={{ background: "linear-gradient(135deg,#1e293b 0%,#334155 100%)", color: "#fff", padding: "20px 28px 16px" }}>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.5px" }}>SmartHub ERP — Entity Relationship Diagram</div>
+        <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+          {Object.values(modules).reduce((a, m) => a + m.tables.length, 0)} tables across 10 modules · Click any table to inspect fields & relationships
+        </div>
+        <input
+          placeholder="🔍  Search tables..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setActiveModule(null); setActiveTable(null); }}
+          style={{ marginTop: 12, padding: "8px 14px", borderRadius: 8, border: "1px solid #475569", background: "#1e293b", color: "#f1f5f9", fontSize: 13, width: 260, outline: "none" }}
+        />
+      </div>
+
+      <div style={{ display: "flex", gap: 0, height: "calc(100vh - 102px)" }}>
+
+        {/* LEFT: Module Selector */}
+        <div style={{ width: 190, background: "#1e293b", padding: "12px 8px", overflowY: "auto", flexShrink: 0 }}>
+          <div
+            onClick={() => { setActiveModule(null); setSearch(""); setActiveTable(null); }}
+            style={{ padding: "8px 12px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontWeight: 600, color: !activeModule && !search ? "#fff" : "#94a3b8", background: !activeModule && !search ? "#334155" : "transparent", marginBottom: 4, letterSpacing: "0.3px" }}
+          >
+            ALL MODULES
+          </div>
+          {moduleOrder.map(mod => {
+            const m = modules[mod];
+            const isActive = activeModule === mod;
+            return (
+              <div
+                key={mod}
+                onClick={() => { setActiveModule(isActive ? null : mod); setSearch(""); setActiveTable(null); }}
+                style={{ padding: "8px 12px", borderRadius: 7, cursor: "pointer", marginBottom: 2, background: isActive ? m.color : "transparent", transition: "all 0.15s" }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 700, color: isActive ? "#fff" : m.color, letterSpacing: "0.4px" }}>{m.label}</div>
+                <div style={{ fontSize: 10, color: isActive ? "rgba(255,255,255,0.75)" : "#64748b", marginTop: 1 }}>{m.tables.length} tables</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* MIDDLE: ERD Tables */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 14px" }}>
+          {visibleModules.map(mod => {
+            const m = modules[mod];
+            const tablesToShow = search.trim()
+              ? filtered.filter(f => f.mod === mod).map(f => f.table)
+              : m.tables;
+            if (!tablesToShow.length) return null;
+            return (
+              <div key={mod} style={{ marginBottom: 24 }}>
+                {/* Module Header */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 4, height: 18, borderRadius: 2, background: m.color }} />
+                  <div style={{ fontSize: 13, fontWeight: 700, color: m.color, letterSpacing: "0.3px" }}>{m.label.toUpperCase()}</div>
+                  <div style={{ flex: 1, height: 1, background: `${m.color}30` }} />
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>{tablesToShow.length} tables</div>
+                </div>
+
+                {/* Tables Grid */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {tablesToShow.map(table => {
+                    const def = tableDefinitions[table] || {};
+                    const isActive = activeTable === table;
+                    return (
+                      <div
+                        key={table}
+                        onClick={() => setActiveTable(isActive ? null : table)}
+                        style={{
+                          background: isActive ? m.color : "#fff",
+                          border: `2px solid ${isActive ? m.color : "#e2e8f0"}`,
+                          borderRadius: 10,
+                          padding: "10px 14px",
+                          cursor: "pointer",
+                          minWidth: 180,
+                          maxWidth: 220,
+                          boxShadow: isActive ? `0 4px 16px ${m.color}40` : "0 1px 4px rgba(0,0,0,0.06)",
+                          transition: "all 0.15s",
+                          flex: "0 1 200px"
+                        }}
+                      >
+                        {/* Table Name */}
+                        <div style={{ fontSize: 13, fontWeight: 700, color: isActive ? "#fff" : "#1e293b", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 14 }}>🗃</span>
+                          {table}
+                        </div>
+                        {/* PK */}
+                        <div style={{ fontSize: 10, background: isActive ? "rgba(255,255,255,0.2)" : "#f1f5f9", borderRadius: 4, padding: "2px 6px", marginBottom: 5, color: isActive ? "#fff" : "#475569", display: "inline-block" }}>
+                          🔑 {def.pk || "id (UUID)"}
+                        </div>
+                        {/* FKs */}
+                        {def.fk && def.fk.length > 0 && (
+                          <div style={{ fontSize: 10, color: isActive ? "rgba(255,255,255,0.8)" : "#64748b", marginBottom: 3 }}>
+                            🔗 {def.fk.length} FK{def.fk.length > 1 ? "s" : ""}
+                          </div>
+                        )}
+                        {/* Field count */}
+                        <div style={{ fontSize: 10, color: isActive ? "rgba(255,255,255,0.7)" : "#94a3b8" }}>
+                          📋 {(def.fields || []).length} fields
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* RIGHT: Table Detail Panel */}
+        <div style={{ width: 310, background: "#fff", borderLeft: "1px solid #e2e8f0", overflowY: "auto", flexShrink: 0 }}>
+          {!activeTable ? (
+            <div style={{ padding: 28, textAlign: "center", color: "#94a3b8", marginTop: 80 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>👆</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>Select a table</div>
+              <div style={{ fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>Click any table card to inspect its primary key, foreign keys, and all field definitions.</div>
+              <div style={{ marginTop: 32, textAlign: "left" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", marginBottom: 12 }}>LEGEND</div>
+                {[["🔑", "Primary Key"], ["🔗", "Foreign Key (Relationship)"], ["📋", "Data Fields"], ["→", "References table"]].map(([icon, label]) => (
+                  <div key={label} style={{ fontSize: 12, color: "#475569", marginBottom: 8, display: "flex", gap: 8 }}>
+                    <span style={{ width: 20 }}>{icon}</span>{label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* Panel Header */}
+              <div style={{ padding: "16px 20px", background: activeModColor, position: "sticky", top: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>{activeTable}</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 2 }}>
+                      {activeTableMod ? modules[activeTableMod].label : ""}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTable(null)}
+                    style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 13 }}
+                  >✕</button>
+                </div>
+              </div>
+
+              <div style={{ padding: "16px 20px" }}>
+                {/* PK */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", marginBottom: 6 }}>PRIMARY KEY</div>
+                  <div style={{ background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 6, padding: "7px 12px", fontSize: 12, color: "#92400e", fontFamily: "monospace" }}>
+                    🔑 {tableInfo?.pk || "id (UUID)"}
+                  </div>
+                </div>
+
+                {/* FKs */}
+                {tableInfo?.fk && tableInfo.fk.length > 0 && (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", marginBottom: 6 }}>FOREIGN KEYS (RELATIONSHIPS)</div>
+                    {tableInfo.fk.map((fk, i) => {
+                      const [col, ref] = fk.split(" → ");
+                      return (
+                        <div key={i} style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 6, padding: "6px 10px", marginBottom: 5, fontSize: 11, fontFamily: "monospace" }}>
+                          <span style={{ color: "#0369a1", fontWeight: 600 }}>{col}</span>
+                          <span style={{ color: "#64748b" }}> → </span>
+                          <span
+                            style={{ color: "#0891b2", textDecoration: "underline", cursor: "pointer" }}
+                            onClick={() => setActiveTable(ref)}
+                          >{ref}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Fields */}
+                {tableInfo?.fields && tableInfo.fields.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.5px", marginBottom: 6 }}>FIELDS</div>
+                    {tableInfo.fields.map((f, i) => {
+                      const [name, ...typeParts] = f.split(" ");
+                      const type = typeParts.join(" ");
+                      return (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "6px 0", borderBottom: i < tableInfo.fields.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+                          <span style={{ fontSize: 12, fontFamily: "monospace", color: "#1e293b", fontWeight: 500 }}>{name}</span>
+                          <span style={{ fontSize: 10, color: "#64748b", fontFamily: "monospace", textAlign: "right", maxWidth: 140, wordBreak: "break-word" }}>{type}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Timestamps (standard on all tables) */}
+                <div style={{ marginTop: 12, padding: "8px 10px", background: "#f8fafc", borderRadius: 6, fontSize: 11, color: "#94a3b8", fontFamily: "monospace" }}>
+                  created_at TIMESTAMP DEFAULT NOW()<br />
+                  updated_at TIMESTAMP
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

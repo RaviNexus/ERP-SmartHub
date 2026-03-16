@@ -1,0 +1,1231 @@
+import { useState } from "react";
+
+// ─── THEME ────────────────────────────────────────────────────────────────────
+const C = {
+  primary:"#6366f1", primaryDark:"#4f46e5", primaryLight:"#eef2ff",
+  success:"#10b981", warning:"#f59e0b", danger:"#ef4444", info:"#0ea5e9",
+  purple:"#8b5cf6", pink:"#ec4899", teal:"#0d9488",
+  dark:"#0f172a", sidebar:"#1e293b", text:"#1e293b",
+  muted:"#64748b", border:"#e2e8f0", bg:"#f8fafc", white:"#ffffff",
+};
+
+// ─── SHARED ───────────────────────────────────────────────────────────────────
+const Badge = ({ c=C.primary, children }) => (
+  <span style={{ background:c+"18", color:c, fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:20 }}>{children}</span>
+);
+const Card = ({ children, style={} }) => (
+  <div style={{ background:C.white, borderRadius:12, border:`1px solid ${C.border}`, boxShadow:"0 1px 4px rgba(0,0,0,0.05)", ...style }}>{children}</div>
+);
+const Btn = ({ children, v="primary", sm, onClick, style={}, full }) => {
+  const s = {
+    primary:{background:C.primary,color:"#fff",border:"none"},
+    outline:{background:"transparent",color:C.primary,border:`1.5px solid ${C.primary}`},
+    ghost:{background:C.primaryLight,color:C.primary,border:"none"},
+    danger:{background:C.danger,color:"#fff",border:"none"},
+    success:{background:C.success,color:"#fff",border:"none"},
+    warning:{background:C.warning,color:"#fff",border:"none"},
+    muted:{background:C.bg,color:C.muted,border:`1px solid ${C.border}`},
+  };
+  return (
+    <button onClick={onClick} style={{ ...s[v], padding:sm?"5px 12px":"8px 18px", borderRadius:8,
+      fontSize:sm?11:13, fontWeight:600, cursor:"pointer", display:"inline-flex",
+      alignItems:"center", gap:5, whiteSpace:"nowrap", width:full?"100%":"auto",
+      justifyContent:full?"center":"flex-start", ...style }}>{children}</button>
+  );
+};
+const Input = ({ label, type="text", placeholder, value, small, required, hint, options, rows }) => (
+  <div style={{ marginBottom:14 }}>
+    {label && <label style={{ fontSize:11, fontWeight:700, color:C.muted, display:"block", marginBottom:4, letterSpacing:"0.3px" }}>
+      {label.toUpperCase()}{required && <span style={{ color:C.danger }}> *</span>}
+    </label>}
+    {type==="select" ? (
+      <select style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:`1.5px solid ${C.border}`, fontSize:13, color:C.text, outline:"none", background:C.white, cursor:"pointer" }}>
+        {(options||[]).map(o=><option key={o}>{o}</option>)}
+      </select>
+    ) : type==="textarea" ? (
+      <textarea rows={rows||3} placeholder={placeholder} style={{ width:"100%", padding:"9px 12px", borderRadius:8, border:`1.5px solid ${C.border}`, fontSize:13, color:C.text, outline:"none", resize:"vertical", fontFamily:"inherit", boxSizing:"border-box" }} />
+    ) : (
+      <input type={type} placeholder={placeholder} defaultValue={value}
+        style={{ width:"100%", padding:small?"7px 10px":"9px 12px", borderRadius:8,
+          border:`1.5px solid ${C.border}`, fontSize:small?12:13, color:C.text, outline:"none",
+          boxSizing:"border-box", background:C.white }} />
+    )}
+    {hint && <div style={{ fontSize:10, color:C.muted, marginTop:3 }}>{hint}</div>}
+  </div>
+);
+const FormSection = ({ title, icon, children, cols=2 }) => (
+  <div style={{ marginBottom:24 }}>
+    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14, paddingBottom:8, borderBottom:`1px solid ${C.border}` }}>
+      <span style={{ fontSize:18 }}>{icon}</span>
+      <span style={{ fontSize:13, fontWeight:700, color:C.dark }}>{title}</span>
+    </div>
+    <div style={{ display:"grid", gridTemplateColumns:`repeat(${cols},1fr)`, gap:"0 20px" }}>{children}</div>
+  </div>
+);
+const Avatar = ({ name, size=32, color=C.primary }) => (
+  <div style={{ width:size, height:size, borderRadius:"50%", background:color+"22", color,
+    display:"flex", alignItems:"center", justifyContent:"center",
+    fontSize:size*0.35, fontWeight:700, flexShrink:0 }}>
+    {name?.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+  </div>
+);
+const MiniBar = ({ value, max=100, color=C.primary }) => (
+  <div style={{ background:"#f1f5f9", borderRadius:4, height:5, overflow:"hidden" }}>
+    <div style={{ width:`${Math.min((value/max)*100,100)}%`, height:"100%", background:color, borderRadius:4 }} />
+  </div>
+);
+const TH = ({ cols }) => (
+  <div style={{ display:"grid", gridTemplateColumns:`repeat(${cols.length},1fr)`, padding:"10px 18px",
+    background:C.bg, borderBottom:`1px solid ${C.border}`, gap:8 }}>
+    {cols.map((c,i)=><div key={i} style={{ fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.5px" }}>{c}</div>)}
+  </div>
+);
+const TR = ({ cols, onClick }) => (
+  <div onClick={onClick} style={{ display:"grid", gridTemplateColumns:`repeat(${cols.length},1fr)`,
+    padding:"11px 18px", borderBottom:`1px solid ${C.border}`, gap:8, alignItems:"center",
+    cursor:onClick?"pointer":"default", background:C.white }}
+    onMouseEnter={e=>{ if(onClick) e.currentTarget.style.background=C.bg; }}
+    onMouseLeave={e=>{ e.currentTarget.style.background=C.white; }}>
+    {cols.map((c,i)=><div key={i} style={{ fontSize:12, color:C.text }}>{c}</div>)}
+  </div>
+);
+const Breadcrumb = ({ items }) => (
+  <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:16 }}>
+    {items.map((item,i)=>(
+      <span key={i} style={{ display:"flex", alignItems:"center", gap:6 }}>
+        {i>0 && <span style={{ color:C.muted, fontSize:12 }}>›</span>}
+        <span style={{ fontSize:12, color:i===items.length-1?C.dark:C.primary, fontWeight:i===items.length-1?600:400, cursor:i<items.length-1?"pointer":"default" }}>{item}</span>
+      </span>
+    ))}
+  </div>
+);
+const PageHeader = ({ title, sub, actions, breadcrumb }) => (
+  <div style={{ marginBottom:20 }}>
+    {breadcrumb && <Breadcrumb items={breadcrumb} />}
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div>
+        <div style={{ fontSize:20, fontWeight:800, color:C.dark }}>{title}</div>
+        {sub && <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>{sub}</div>}
+      </div>
+      <div style={{ display:"flex", gap:8 }}>{actions}</div>
+    </div>
+  </div>
+);
+const StatusStep = ({ steps, current }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:0, marginBottom:20 }}>
+    {steps.map((s,i)=>{
+      const done = i<current, active = i===current;
+      return (
+        <div key={i} style={{ display:"flex", alignItems:"center", flex:1 }}>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}>
+            <div style={{ width:28, height:28, borderRadius:"50%", background:done?C.success:active?C.primary:C.border, color:done||active?"#fff":C.muted, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700 }}>
+              {done?"✓":i+1}
+            </div>
+            <span style={{ fontSize:9, fontWeight:600, color:done?C.success:active?C.primary:C.muted, whiteSpace:"nowrap" }}>{s}</span>
+          </div>
+          {i<steps.length-1 && <div style={{ flex:1, height:2, background:done?C.success:C.border, margin:"0 4px", marginBottom:18 }} />}
+        </div>
+      );
+    })}
+  </div>
+);
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE SCREENS
+// ══════════════════════════════════════════════════════════════════
+
+// ── CUSTOMER LIST ─────────────────────────────────────────────────
+const CustomerList = ({ onNavigate }) => {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+  const customers = [
+    { code:"CUST-0001", name:"TechSpace Pvt. Ltd.", contact:"Suresh Mehta", email:"suresh@techspace.in", phone:"9712345678", outstanding:"₹45,000", stage:"Active", since:"Jun 2024", type:"Business" },
+    { code:"CUST-0002", name:"Joshi & Associates", contact:"Neha Joshi", email:"neha@joshi.com", phone:"9898123456", outstanding:"₹0", stage:"Active", since:"Jan 2025", type:"Business" },
+    { code:"CUST-0003", name:"Mehta Traders", contact:"Deepak Mehta", email:"deepak@mehta.com", phone:"9011223344", outstanding:"₹12,500", stage:"At Risk", since:"Mar 2023", type:"Business" },
+    { code:"CUST-0004", name:"Anjali Verma", contact:"Anjali Verma", email:"anjali@gmail.com", phone:"9988776655", outstanding:"₹0", stage:"Prospect", since:"Feb 2025", type:"Individual" },
+    { code:"CUST-0005", name:"Sunrise Corp.", contact:"Ravi Sharma", email:"ravi@sunrise.com", phone:"9123456789", outstanding:"₹8,200", stage:"Active", since:"Aug 2024", type:"Business" },
+  ];
+  const stageC = { Active:C.success, "At Risk":C.warning, Prospect:C.muted, Churned:C.danger };
+  return (
+    <div>
+      <PageHeader title="Customers" sub="84 total customers · 3 at risk"
+        breadcrumb={["CRM","Customers"]}
+        actions={[
+          <Btn v="muted" sm key="imp">📥 Import CSV</Btn>,
+          <Btn v="outline" sm key="exp">📤 Export</Btn>,
+          <Btn sm key="add" onClick={()=>onNavigate("customer-add")}>+ Add Customer</Btn>
+        ]}
+      />
+      {/* Stats Row */}
+      <div style={{ display:"flex", gap:12, marginBottom:16 }}>
+        {[["All",84,C.primary],["Active",67,C.success],["At Risk",9,C.warning],["Prospect",5,C.muted],["Churned",3,C.danger]].map(([l,n,c])=>(
+          <div key={l} onClick={()=>setFilter(l)} style={{ padding:"10px 18px", borderRadius:10, background:filter===l?c:C.white, border:`1.5px solid ${filter===l?c:C.border}`, cursor:"pointer", minWidth:90, textAlign:"center" }}>
+            <div style={{ fontSize:18, fontWeight:800, color:filter===l?"#fff":c }}>{n}</div>
+            <div style={{ fontSize:10, fontWeight:600, color:filter===l?"rgba(255,255,255,0.8)":C.muted }}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Toolbar */}
+      <Card style={{ padding:"10px 14px", marginBottom:14, display:"flex", gap:10, alignItems:"center" }}>
+        <div style={{ flex:1, display:"flex", gap:8, alignItems:"center", background:C.bg, borderRadius:8, padding:"8px 12px", border:`1px solid ${C.border}` }}>
+          <span style={{ color:C.muted }}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name, email, phone, code..." style={{ border:"none", background:"none", fontSize:13, color:C.text, outline:"none", flex:1 }} />
+        </div>
+        {["Type ▾","Stage ▾","Assigned To ▾","Sort: Name ▾"].map(f=>(
+          <div key={f} style={{ padding:"8px 12px", background:C.bg, borderRadius:8, fontSize:12, color:C.muted, cursor:"pointer", border:`1px solid ${C.border}`, whiteSpace:"nowrap" }}>{f}</div>
+        ))}
+      </Card>
+      {/* Table */}
+      <Card>
+        <TH cols={["CUSTOMER","CONTACT","EMAIL / PHONE","OUTSTANDING","LIFECYCLE","SINCE","ACTIONS"]} />
+        {customers.map((cu,i)=>(
+          <TR key={i} onClick={()=>onNavigate("customer-view",cu)}
+            cols={[
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                <Avatar name={cu.name} size={34} color={[C.primary,C.purple,C.teal,C.pink,C.info][i]} />
+                <div>
+                  <div style={{ fontWeight:600, fontSize:12 }}>{cu.name}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>{cu.code} · {cu.type}</div>
+                </div>
+              </div>,
+              cu.contact,
+              <div><div style={{ fontSize:11 }}>{cu.email}</div><div style={{ fontSize:10, color:C.muted }}>{cu.phone}</div></div>,
+              <b style={{ color:cu.outstanding!=="₹0"?C.warning:C.success }}>{cu.outstanding}</b>,
+              <Badge c={stageC[cu.stage]||C.muted}>{cu.stage}</Badge>,
+              cu.since,
+              <div style={{ display:"flex", gap:4 }}>
+                <Btn v="ghost" sm onClick={e=>{e.stopPropagation();onNavigate("customer-view",cu)}}>View</Btn>
+                <Btn v="outline" sm onClick={e=>{e.stopPropagation();onNavigate("customer-edit",cu)}}>Edit</Btn>
+              </div>
+            ]}
+          />
+        ))}
+        <div style={{ padding:"12px 18px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ fontSize:12, color:C.muted }}>Showing 1–5 of 84 customers</div>
+          <div style={{ display:"flex", gap:4 }}>
+            {["‹","1","2","3","...","17","›"].map((p,i)=>(
+              <div key={i} style={{ width:28, height:28, borderRadius:6, background:p==="1"?C.primary:C.bg, color:p==="1"?"#fff":C.muted, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, cursor:"pointer", border:`1px solid ${C.border}` }}>{p}</div>
+            ))}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+// ── CUSTOMER VIEW (360° Profile) ───────────────────────────────────
+const CustomerView = ({ data={}, onNavigate }) => {
+  const [tab, setTab] = useState("overview");
+  const cu = data || {};
+  return (
+    <div>
+      <PageHeader breadcrumb={["CRM","Customers","TechSpace Pvt. Ltd."]}
+        title="" sub=""
+        actions={[
+          <Btn v="muted" sm key="back" onClick={()=>onNavigate("customer-list")}>← Back</Btn>,
+          <Btn v="outline" sm key="edit" onClick={()=>onNavigate("customer-edit",cu)}>✏️ Edit</Btn>,
+          <Btn sm key="inv">+ Invoice</Btn>
+        ]}
+      />
+      {/* Profile Header */}
+      <Card style={{ padding:20, marginBottom:14 }}>
+        <div style={{ display:"flex", gap:16, alignItems:"flex-start" }}>
+          <Avatar name="TechSpace Pvt. Ltd." size={56} color={C.primary} />
+          <div style={{ flex:1 }}>
+            <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+              <span style={{ fontSize:18, fontWeight:800, color:C.dark }}>TechSpace Pvt. Ltd.</span>
+              <Badge c={C.success}>Active</Badge>
+              <Badge c={C.primary}>Business</Badge>
+            </div>
+            <div style={{ fontSize:13, color:C.muted, marginTop:2 }}>CUST-0001 · Contact: Suresh Mehta</div>
+            <div style={{ display:"flex", gap:16, marginTop:10, flexWrap:"wrap" }}>
+              {[["📧","suresh@techspace.in"],["📞","9712345678"],["🏢","401, Synergy House, Ahmedabad"],["💳","GST: 24AAACT1234B1Z1"]].map(([ic,txt])=>(
+                <div key={txt} style={{ fontSize:12, color:C.muted, display:"flex", gap:5, alignItems:"center" }}><span>{ic}</span>{txt}</div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+            {[["Outstanding","₹45,000",C.warning],["Credit Limit","₹2,00,000",C.primary],["Total Purchases","₹3,85,000",C.success],["Since","Jun 2024",C.muted]].map(([l,v,c])=>(
+              <div key={l} style={{ textAlign:"center", padding:"10px 16px", background:C.bg, borderRadius:10 }}>
+                <div style={{ fontSize:16, fontWeight:800, color:c }}>{v}</div>
+                <div style={{ fontSize:10, color:C.muted, marginTop:2 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Card>
+      {/* Tabs */}
+      <div style={{ display:"flex", gap:4, marginBottom:14, background:C.bg, padding:4, borderRadius:10, width:"fit-content" }}>
+        {["overview","invoices","activities","documents","notes"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{ padding:"7px 16px", borderRadius:7, border:"none", fontSize:12, fontWeight:600, cursor:"pointer", background:tab===t?C.white:"transparent", color:tab===t?C.primary:C.muted, textTransform:"capitalize", boxShadow:tab===t?"0 1px 4px rgba(0,0,0,0.08)":"none" }}>{t}</button>
+        ))}
+      </div>
+      {tab==="overview" && (
+        <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:14 }}>
+          <Card style={{ padding:20 }}>
+            <div style={{ fontWeight:700, fontSize:14, marginBottom:14 }}>Recent Invoices</div>
+            <TH cols={["INVOICE","DATE","AMOUNT","STATUS"]} />
+            {[["INV-2025-0042","Mar 1, 2025","₹63,398","Unpaid"],["INV-2025-0038","Feb 5, 2025","₹28,560","Paid"],["INV-2025-0031","Jan 12, 2025","₹44,200","Paid"]].map(([n,d,a,s],i)=>(
+              <TR key={i} cols={[<span style={{ color:C.primary, fontFamily:"monospace", fontSize:11 }}>{n}</span>, d, <b>{a}</b>, <Badge c={s==="Paid"?C.success:C.warning}>{s}</Badge>]} />
+            ))}
+          </Card>
+          <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+            <Card style={{ padding:20 }}>
+              <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>Payment Terms</div>
+              {[["Terms","Net 30 Days"],["Payment Mode","Bank Transfer"],["Credit Limit","₹2,00,000"],["Current Outstanding","₹45,000"]].map(([l,v])=>(
+                <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+                  <span style={{ fontSize:12, color:C.muted }}>{l}</span>
+                  <span style={{ fontSize:12, fontWeight:600 }}>{v}</span>
+                </div>
+              ))}
+            </Card>
+            <Card style={{ padding:20 }}>
+              <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>Upcoming Follow-up</div>
+              <div style={{ background:C.primaryLight, borderRadius:10, padding:14, borderLeft:`3px solid ${C.primary}` }}>
+                <div style={{ fontSize:12, fontWeight:600, color:C.dark }}>📞 Call — Mar 12, 2025</div>
+                <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>Send quotation and follow up on proposal</div>
+              </div>
+              <Btn v="ghost" sm style={{ marginTop:10, width:"100%", justifyContent:"center" }}>+ Log Activity</Btn>
+            </Card>
+          </div>
+        </div>
+      )}
+      {tab==="activities" && (
+        <Card style={{ padding:20 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+            <div style={{ fontWeight:700, fontSize:14 }}>Activity Timeline</div>
+            <Btn sm>+ Log Activity</Btn>
+          </div>
+          {[
+            { type:"📞", label:"Call", date:"Mar 8, 2025", desc:"Discussed requirements. Client wants 20 chairs and 5 conference tables. Requesting quotation.", outcome:"Interested", user:"Priya S." },
+            { type:"📧", label:"Email", date:"Mar 3, 2025", desc:"Sent product catalogue and pricing list.", outcome:"Follow-up Required", user:"Priya S." },
+            { type:"🤝", label:"Meeting", date:"Feb 25, 2025", desc:"Initial discovery call with Suresh Mehta. Identified budget of ₹85K for office furniture.", outcome:"Qualified", user:"Amit P." },
+          ].map((a,i)=>(
+            <div key={i} style={{ display:"flex", gap:14, paddingBottom:20, borderBottom:i<2?`1px solid ${C.border}`:"none", marginBottom:i<2?20:0 }}>
+              <div style={{ width:36, height:36, borderRadius:10, background:C.primaryLight, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{a.type}</div>
+              <div style={{ flex:1 }}>
+                <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:4 }}>
+                  <span style={{ fontWeight:600, fontSize:13 }}>{a.label}</span>
+                  <Badge c={C.success}>{a.outcome}</Badge>
+                  <span style={{ fontSize:11, color:C.muted, marginLeft:"auto" }}>{a.date} · {a.user}</span>
+                </div>
+                <div style={{ fontSize:12, color:C.muted, lineHeight:1.6 }}>{a.desc}</div>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+};
+
+// ── ADD / EDIT CUSTOMER ────────────────────────────────────────────
+const CustomerForm = ({ mode="add", data={}, onNavigate }) => (
+  <div>
+    <PageHeader
+      breadcrumb={["CRM","Customers", mode==="add"?"New Customer":"Edit Customer"]}
+      title={mode==="add"?"Add New Customer":"Edit Customer"}
+      sub={mode==="add"?"Fill in the details to add a new customer":"Update customer information"}
+      actions={[
+        <Btn v="muted" sm key="cancel" onClick={()=>onNavigate("customer-list")}>Cancel</Btn>,
+        <Btn v="outline" sm key="save-draft">Save Draft</Btn>,
+        <Btn sm key="save">✓ Save Customer</Btn>
+      ]}
+    />
+    <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:14 }}>
+      {/* Main Form */}
+      <div>
+        <Card style={{ padding:24, marginBottom:14 }}>
+          <FormSection title="Basic Information" icon="👤">
+            <Input label="Customer Name" placeholder="e.g. TechSpace Pvt. Ltd." required />
+            <Input label="Customer Code" placeholder="Auto: CUST-0085" hint="Leave blank to auto-generate" />
+            <Input label="Customer Type" type="select" options={["Business","Individual"]} required />
+            <Input label="Contact Person" placeholder="Primary contact name" required />
+            <Input label="Email Address" type="email" placeholder="contact@company.com" required />
+            <Input label="Phone Number" type="tel" placeholder="10-digit mobile number" required />
+            <Input label="Alternate Phone" placeholder="Optional" />
+            <Input label="Website" placeholder="https://www.company.com" />
+          </FormSection>
+          <FormSection title="Tax & Business" icon="🏢">
+            <Input label="GST Number" placeholder="e.g. 24AABCP1234A1Z5" hint="15-character GSTIN" />
+            <Input label="PAN Number" placeholder="e.g. AABCP1234A" />
+            <Input label="Company Registration No." placeholder="CIN number" />
+            <Input label="Industry" type="select" options={["Retail","Manufacturing","IT/Software","Healthcare","Education","Other"]} />
+          </FormSection>
+          <FormSection title="Billing Address" icon="📍">
+            <Input label="Address Line 1" placeholder="Building, Street" required />
+            <Input label="Address Line 2" placeholder="Area, Landmark" />
+            <Input label="City" placeholder="e.g. Ahmedabad" required />
+            <Input label="State" type="select" options={["Gujarat","Maharashtra","Delhi","Karnataka","Tamil Nadu","Other"]} required />
+            <Input label="Country" type="select" options={["India","UAE","USA","UK"]} required />
+            <Input label="PIN Code" placeholder="6-digit PIN" required />
+          </FormSection>
+        </Card>
+        <Card style={{ padding:24 }}>
+          <FormSection title="Shipping Address" icon="🚚" cols={2}>
+            <div style={{ gridColumn:"1/-1", marginBottom:10 }}>
+              <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:12, cursor:"pointer", color:C.dark }}>
+                <input type="checkbox" defaultChecked /> <span>Same as billing address</span>
+              </label>
+            </div>
+            <Input label="Shipping Address Line 1" placeholder="If different from billing" />
+            <Input label="City" placeholder="" />
+          </FormSection>
+          <FormSection title="Bank Details (for refunds)" icon="🏦" cols={2}>
+            <Input label="Account Name" placeholder="As per bank records" />
+            <Input label="Account Number" placeholder="Numeric, 9–18 digits" />
+            <Input label="IFSC Code" placeholder="11-character code" />
+            <Input label="Bank Name" placeholder="e.g. HDFC Bank" />
+          </FormSection>
+        </Card>
+      </div>
+      {/* Sidebar */}
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:14 }}>💰 Payment Settings</div>
+          <Input label="Payment Terms" type="select" options={["Immediate","Net 15","Net 30","Net 60","Custom"]} required />
+          <Input label="Credit Limit (₹)" placeholder="0 = unlimited" hint="Leave 0 for no credit limit" />
+          <Input label="Preferred Payment Mode" type="select" options={["Bank Transfer","Cash","UPI","Cheque","Card"]} />
+          <Input label="Assigned Sales Rep" type="select" options={["Priya Sharma","Amit Patel","Rahul Kumar"]} />
+        </Card>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:14 }}>🏷️ Classification</div>
+          <Input label="Customer Segment" type="select" options={["High Value","Regular","New","At Risk"]} />
+          <Input label="Tags" placeholder="Type and press enter..." hint="Helps in filtering and campaigns" />
+          <Input label="Status" type="select" options={["Active","Inactive"]} />
+        </Card>
+        <Card style={{ padding:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:14 }}>📝 Notes</div>
+          <Input label="Internal Notes" type="textarea" placeholder="Any internal notes about this customer..." rows={4} />
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
+// ── INVOICE CREATE ─────────────────────────────────────────────────
+const InvoiceCreate = ({ onNavigate }) => {
+  const [items] = useState([
+    { product:"Office Chair — Ergonomic", qty:10, price:5200, disc:5, tax:18 },
+    { product:"A4 Copier Paper (500 sheets)", qty:20, price:250, disc:0, tax:12 },
+  ]);
+  const lineTotal = (it) => it.qty * it.price * (1 - it.disc/100) * (1 + it.tax/100);
+  const subtotal = items.reduce((a,it)=>a + it.qty*it.price*(1-it.disc/100), 0);
+  const totalTax = items.reduce((a,it)=>a + it.qty*it.price*(1-it.disc/100)*it.tax/100, 0);
+  const grand = subtotal + totalTax;
+  return (
+    <div>
+      <PageHeader breadcrumb={["Sales","Invoices","New Invoice"]}
+        title="Create Invoice" sub="INV-2025-0043 (Auto-generated)"
+        actions={[
+          <Btn v="muted" sm key="back" onClick={()=>onNavigate("sales-list")}>Cancel</Btn>,
+          <Btn v="outline" sm key="preview">👁 Preview PDF</Btn>,
+          <Btn v="warning" sm key="draft">Save Draft</Btn>,
+          <Btn sm key="send">✉ Save & Send</Btn>
+        ]}
+      />
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 320px", gap:14 }}>
+        {/* Left */}
+        <div>
+          <Card style={{ padding:20, marginBottom:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:"0 20px" }}>
+              <Input label="Customer" type="select" options={["TechSpace Pvt. Ltd.","Joshi & Associates","Mehta Traders"]} required />
+              <Input label="Invoice Date" type="date" value="2025-03-11" required />
+              <Input label="Due Date" type="date" value="2025-04-10" required />
+              <Input label="Billing Address" type="select" options={["401, Synergy House, Ahmedabad — Gujarat"]} />
+              <Input label="Warehouse" type="select" options={["WH-AHM-01 (Main Warehouse)","WH-SRT-01 (Surat)"]} />
+              <Input label="Payment Terms" type="select" options={["Net 30","Net 15","Immediate","Net 60"]} />
+              <Input label="Customer PO Reference" placeholder="Customer's PO No. (optional)" />
+              <Input label="Sales Rep" type="select" options={["Priya Sharma","Amit Patel"]} />
+              <Input label="Currency" type="select" options={["INR — ₹ (Base)","USD — $","AED — د.إ"]} />
+            </div>
+          </Card>
+          {/* Line Items */}
+          <Card style={{ marginBottom:14 }}>
+            <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:14, fontWeight:700, color:C.dark }}>Line Items</span>
+              <Btn v="ghost" sm>🔍 Add by Barcode</Btn>
+            </div>
+            {/* Line header */}
+            <div style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 0.5fr", padding:"8px 18px", background:C.bg, gap:8, fontSize:10, fontWeight:700, color:C.muted, letterSpacing:"0.4px" }}>
+              {["PRODUCT / DESCRIPTION","QTY","UNIT PRICE","DISC %","TAX","LINE TOTAL",""].map((h,i)=><div key={i}>{h}</div>)}
+            </div>
+            {items.map((it,i)=>(
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 0.5fr", padding:"10px 18px", borderBottom:`1px solid ${C.border}`, gap:8, alignItems:"center" }}>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:600 }}>{it.product}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>HSN: 94013000 · UOM: Piece</div>
+                </div>
+                {[it.qty, `₹${it.price.toLocaleString()}`, `${it.disc}%`, `${it.tax}%`].map((v,j)=>(
+                  <div key={j} style={{ background:C.bg, borderRadius:6, padding:"6px 8px", fontSize:12, color:C.text, border:`1px solid ${C.border}`, cursor:"text" }}>{v}</div>
+                ))}
+                <div style={{ fontSize:12, fontWeight:700, color:C.primary }}>₹{lineTotal(it).toLocaleString("en-IN",{maximumFractionDigits:0})}</div>
+                <div style={{ color:C.danger, cursor:"pointer", fontSize:16, textAlign:"center" }}>×</div>
+              </div>
+            ))}
+            <div style={{ padding:"12px 18px", display:"flex", gap:8 }}>
+              <Btn v="ghost" sm>+ Add Product</Btn>
+              <Btn v="muted" sm>+ Add Description Line</Btn>
+            </div>
+          </Card>
+          {/* Notes */}
+          <Card style={{ padding:20 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0 20px" }}>
+              <Input label="Terms & Conditions" type="textarea" placeholder="Payment terms, delivery conditions..." rows={3} />
+              <Input label="Internal Notes (not on PDF)" type="textarea" placeholder="Notes for your team only..." rows={3} />
+            </div>
+          </Card>
+        </div>
+        {/* Right: Summary */}
+        <div>
+          <Card style={{ padding:20, marginBottom:14, position:"sticky", top:0 }}>
+            <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:14 }}>Invoice Summary</div>
+            {[
+              ["Subtotal", `₹${subtotal.toLocaleString("en-IN",{maximumFractionDigits:0})}`],
+              ["Total Discount", "₹2,720"],
+              ["CGST (9%)", `₹${(totalTax/2).toLocaleString("en-IN",{maximumFractionDigits:0})}`],
+              ["SGST (9%)", `₹${(totalTax/2).toLocaleString("en-IN",{maximumFractionDigits:0})}`],
+            ].map(([l,v])=>(
+              <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
+                <span style={{ fontSize:12, color:C.muted }}>{l}</span>
+                <span style={{ fontSize:12, color:C.dark }}>{v}</span>
+              </div>
+            ))}
+            <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0 0", marginTop:4 }}>
+              <span style={{ fontSize:15, fontWeight:800, color:C.dark }}>Grand Total</span>
+              <span style={{ fontSize:18, fontWeight:800, color:C.primary }}>₹{grand.toLocaleString("en-IN",{maximumFractionDigits:0})}</span>
+            </div>
+            <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+              <Input label="Coupon / Discount Code" placeholder="Enter code" small />
+              <Input label="Round Off" value="0.00" small />
+            </div>
+            <Btn sm full style={{ marginTop:12 }}>✉ Save & Send Invoice</Btn>
+            <Btn v="outline" sm full style={{ marginTop:8 }}>👁 Preview PDF</Btn>
+          </Card>
+          <Card style={{ padding:20 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:12 }}>📎 Attachments</div>
+            <div style={{ border:`2px dashed ${C.border}`, borderRadius:10, padding:20, textAlign:"center", cursor:"pointer" }}>
+              <div style={{ fontSize:24, marginBottom:6 }}>📁</div>
+              <div style={{ fontSize:12, color:C.muted }}>Drop files here or <span style={{ color:C.primary }}>browse</span></div>
+              <div style={{ fontSize:10, color:C.muted, marginTop:4 }}>PDF, JPG, PNG · Max 5MB each</div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── PRODUCT LIST ───────────────────────────────────────────────────
+const ProductList = ({ onNavigate }) => (
+  <div>
+    <PageHeader title="Products" sub="246 active products · 7 low stock"
+      breadcrumb={["Inventory","Products"]}
+      actions={[
+        <Btn v="muted" sm key="imp">📥 Import</Btn>,
+        <Btn v="outline" sm key="bc">🏷 Print Barcodes</Btn>,
+        <Btn sm key="add" onClick={()=>onNavigate("product-add")}>+ Add Product</Btn>
+      ]}
+    />
+    <Card style={{ padding:"10px 14px", marginBottom:14, display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+      <div style={{ flex:1, display:"flex", gap:8, alignItems:"center", background:C.bg, borderRadius:8, padding:"8px 12px", border:`1px solid ${C.border}`, minWidth:200 }}>
+        <span>🔍</span>
+        <input placeholder="Search by name, SKU, barcode..." style={{ border:"none", background:"none", fontSize:13, color:C.text, outline:"none", flex:1 }} />
+      </div>
+      {["Category ▾","Warehouse ▾","Status ▾","Sort: Name ▾"].map(f=>(
+        <div key={f} style={{ padding:"8px 12px", background:C.bg, borderRadius:8, fontSize:12, color:C.muted, cursor:"pointer", border:`1px solid ${C.border}` }}>{f}</div>
+      ))}
+      <div style={{ display:"flex", gap:4 }}>
+        {["⊞","☰"].map((ic,i)=>(
+          <div key={ic} style={{ width:34, height:34, background:i===0?C.primary:C.bg, borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:i===0?"#fff":C.muted, border:`1px solid ${C.border}` }}>{ic}</div>
+        ))}
+      </div>
+    </Card>
+    <Card>
+      <TH cols={["PRODUCT","SKU","CATEGORY","STOCK (UNITS)","REORDER","COST PRICE","SELL PRICE","TAX","STATUS","ACTIONS"]} />
+      {[
+        { name:"Office Chair — Ergonomic", img:"🪑", sku:"FURN-CHR-001", cat:"Furniture", stock:65, reorder:10, cp:"₹3,500", sp:"₹5,200", tax:"GST 18%", status:"In Stock" },
+        { name:"A4 Copier Paper (500 Sheets)", img:"📄", sku:"STAT-PPR-001", cat:"Stationery", stock:200, reorder:50, cp:"₹180", sp:"₹250", tax:"GST 12%", status:"In Stock" },
+        { name:"Paracetamol 500mg (Strip)", img:"💊", sku:"MED-PCM-001", cat:"Medicines", stock:8, reorder:100, cp:"₹12", sp:"₹18", tax:"GST 5%", status:"Low Stock" },
+        { name:"Laptop Stand (Aluminium)", img:"💻", sku:"ELEC-LS-001", cat:"Electronics", stock:0, reorder:5, cp:"₹850", sp:"₹1,200", tax:"GST 18%", status:"Out of Stock" },
+        { name:"Whiteboard Marker Set (4 pcs)", img:"✏️", sku:"STAT-WM-001", cat:"Stationery", stock:120, reorder:30, cp:"₹45", sp:"₹80", tax:"GST 12%", status:"In Stock" },
+      ].map((p,i)=>{
+        const sc = p.status==="In Stock"?C.success:p.status==="Low Stock"?C.warning:C.danger;
+        return (
+          <TR key={i} onClick={()=>onNavigate("product-view",p)} cols={[
+            <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <div style={{ width:36, height:36, borderRadius:8, background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, border:`1px solid ${C.border}` }}>{p.img}</div>
+              <div><div style={{ fontWeight:600, fontSize:12 }}>{p.name}</div><div style={{ fontSize:10, color:C.muted }}>Track variants · Batch off</div></div>
+            </div>,
+            <span style={{ fontFamily:"monospace", fontSize:10, background:C.bg, padding:"2px 6px", borderRadius:4, color:C.muted }}>{p.sku}</span>,
+            <Badge c={C.primary}>{p.cat}</Badge>,
+            <div>
+              <span style={{ fontWeight:700, color:p.stock<p.reorder?(p.stock===0?C.danger:C.warning):C.dark }}>{p.stock}</span>
+              <MiniBar value={p.stock} max={p.reorder*8} color={p.stock<p.reorder?C.warning:C.success} />
+            </div>,
+            p.reorder, p.cp,
+            <b style={{ color:C.primary }}>{p.sp}</b>,
+            <Badge c={C.purple}>{p.tax}</Badge>,
+            <Badge c={sc}>{p.status}</Badge>,
+            <div style={{ display:"flex", gap:4 }}>
+              <Btn v="ghost" sm onClick={e=>{e.stopPropagation();onNavigate("stock-in")}}>+Stock</Btn>
+              <Btn v="outline" sm onClick={e=>{e.stopPropagation();onNavigate("product-edit",p)}}>Edit</Btn>
+            </div>
+          ]} />
+        );
+      })}
+      <div style={{ padding:"12px 18px", display:"flex", justifyContent:"space-between" }}>
+        <div style={{ fontSize:12, color:C.muted }}>Showing 1–5 of 246 products</div>
+        <div style={{ display:"flex", gap:4 }}>
+          {["‹","1","2","3","...","50","›"].map((p,i)=>(
+            <div key={i} style={{ width:28, height:28, borderRadius:6, background:p==="1"?C.primary:C.bg, color:p==="1"?"#fff":C.muted, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, cursor:"pointer", border:`1px solid ${C.border}` }}>{p}</div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  </div>
+);
+
+// ── PRODUCT ADD FORM ──────────────────────────────────────────────
+const ProductForm = ({ onNavigate }) => {
+  const [step, setStep] = useState(0);
+  const steps = ["Basic Info","Pricing & Tax","Stock & Warehouse","Variants & Batch"];
+  return (
+    <div>
+      <PageHeader breadcrumb={["Inventory","Products","New Product"]}
+        title="Add New Product" sub="Step-by-step product creation"
+        actions={[
+          <Btn v="muted" sm key="back" onClick={()=>onNavigate("product-list")}>Cancel</Btn>,
+          step>0&&<Btn v="outline" sm key="prev" onClick={()=>setStep(s=>s-1)}>← Previous</Btn>,
+          step<3?<Btn sm key="next" onClick={()=>setStep(s=>s+1)}>Next Step →</Btn>:<Btn sm key="save">✓ Save Product</Btn>
+        ].filter(Boolean)}
+      />
+      <StatusStep steps={steps} current={step} />
+      <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:14 }}>
+        <Card style={{ padding:24 }}>
+          {step===0 && (
+            <>
+              <FormSection title="Product Identity" icon="📦">
+                <Input label="Product Name" placeholder="e.g. Office Chair — Ergonomic" required />
+                <Input label="Product Code / SKU" placeholder="Auto: FURN-CHR-085" hint="Auto-generated if blank" />
+                <Input label="Product Type" type="select" options={["Physical Product","Service","Digital Product"]} required />
+                <Input label="Unit of Measure" type="select" options={["Piece","Kilogram","Litre","Box","Metre","Hour"]} required />
+                <Input label="Secondary UOM" type="select" options={["None","Box (12 Pieces)","Carton (24 Pieces)"]} />
+                <Input label="HSN / SAC Code" placeholder="4–8 digit code" hint="Required for GST filing" />
+              </FormSection>
+              <FormSection title="Category" icon="🗂">
+                <Input label="Category" type="select" options={["Furniture","Stationery","Electronics","Medicines","Other"]} required />
+                <Input label="Sub-Category" type="select" options={["Select category first..."]} />
+                <div style={{ gridColumn:"1/-1" }}>
+                  <Input label="Product Description" type="textarea" placeholder="Describe the product..." rows={3} />
+                </div>
+              </FormSection>
+            </>
+          )}
+          {step===1 && (
+            <FormSection title="Pricing & Tax" icon="💰" cols={2}>
+              <Input label="Purchase Price (₹)" placeholder="Cost price from vendor" required />
+              <Input label="Selling Price (₹)" placeholder="Price you sell at" required />
+              <Input label="Minimum Selling Price (₹)" placeholder="Floor price (optional)" hint="Cannot sell below this" />
+              <Input label="Tax Slab" type="select" options={["GST 18% (CGST 9% + SGST 9%)","GST 12% (CGST 6% + SGST 6%)","GST 5%","Tax Exempt"]} required />
+              <div style={{ gridColumn:"1/-1", padding:14, background:C.bg, borderRadius:10 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:C.dark, marginBottom:8 }}>Price Preview</div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                  {[["Selling Price","₹5,200"],["GST 18%","₹936"],["Invoice Price","₹6,136"]].map(([l,v])=>(
+                    <div key={l} style={{ textAlign:"center" }}>
+                      <div style={{ fontSize:16, fontWeight:800, color:C.primary }}>{v}</div>
+                      <div style={{ fontSize:10, color:C.muted }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </FormSection>
+          )}
+          {step===2 && (
+            <FormSection title="Stock & Warehouse" icon="🏭" cols={2}>
+              <Input label="Opening Stock (Units)" placeholder="Current stock quantity" required />
+              <Input label="Reorder Level" placeholder="Alert when stock falls below this" required />
+              <Input label="Max Stock Level" placeholder="Maximum stock to maintain" />
+              <Input label="Default Warehouse" type="select" options={["WH-AHM-01 (Main Warehouse)","WH-SRT-01 (Surat Store)"]} required />
+              <Input label="Bin / Rack Location" placeholder="e.g. A-12-3" hint="Physical location in warehouse" />
+              <Input label="Barcode" placeholder="Auto-generate or enter manually" hint="EAN-13 format recommended" />
+            </FormSection>
+          )}
+          {step===3 && (
+            <>
+              <FormSection title="Variants" icon="🎨" cols={1}>
+                <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:13, marginBottom:12, cursor:"pointer" }}>
+                  <input type="checkbox" />
+                  <span style={{ fontWeight:600 }}>This product has variants (Size, Color, etc.)</span>
+                </label>
+                <div style={{ background:C.bg, borderRadius:10, padding:14, opacity:0.6 }}>
+                  <div style={{ fontSize:12, color:C.muted }}>Enable variants above to configure Size, Color, and other attributes</div>
+                </div>
+              </FormSection>
+              <FormSection title="Batch & Expiry Tracking" icon="🏷" cols={1}>
+                <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:13, marginBottom:10, cursor:"pointer" }}>
+                  <input type="checkbox" />
+                  <span style={{ fontWeight:600 }}>Enable batch tracking (for perishables / medicines)</span>
+                </label>
+                <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:13, cursor:"pointer" }}>
+                  <input type="checkbox" />
+                  <span style={{ fontWeight:600 }}>Track expiry dates</span>
+                </label>
+                <Input label="Expiry Alert (days before)" placeholder="e.g. 30" hint="Send alert this many days before expiry" />
+              </FormSection>
+            </>
+          )}
+        </Card>
+        {/* Sidebar */}
+        <div>
+          <Card style={{ padding:20, marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:12 }}>📷 Product Image</div>
+            <div style={{ border:`2px dashed ${C.border}`, borderRadius:10, padding:30, textAlign:"center", cursor:"pointer" }}>
+              <div style={{ fontSize:40 }}>📷</div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:8 }}>Upload product image</div>
+              <div style={{ fontSize:10, color:C.muted, marginTop:4 }}>JPG, PNG · Max 2MB</div>
+              <Btn v="outline" sm style={{ marginTop:10 }}>Browse Files</Btn>
+            </div>
+          </Card>
+          <Card style={{ padding:20, marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:12 }}>⚙️ Settings</div>
+            {[["Is Purchasable","Can appear in Purchase Orders"],["Is Sellable","Can appear in Sales Orders"],["Active","Show in product lists"]].map(([l,d])=>(
+              <div key={l} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
+                <div><div style={{ fontSize:12, fontWeight:600 }}>{l}</div><div style={{ fontSize:10, color:C.muted }}>{d}</div></div>
+                <div style={{ width:36, height:20, borderRadius:20, background:C.success, position:"relative", cursor:"pointer" }}>
+                  <div style={{ width:16, height:16, borderRadius:"50%", background:"#fff", position:"absolute", right:2, top:2 }} />
+                </div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── STOCK IN FORM ─────────────────────────────────────────────────
+const StockIn = ({ onNavigate }) => (
+  <div>
+    <PageHeader breadcrumb={["Inventory","Stock In"]}
+      title="Stock Inward Entry" sub="Record goods received into warehouse"
+      actions={[
+        <Btn v="muted" sm key="back" onClick={()=>onNavigate("product-list")}>Cancel</Btn>,
+        <Btn sm key="save">✓ Confirm Stock In</Btn>
+      ]}
+    />
+    <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:14 }}>
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <FormSection title="Entry Details" icon="📋" cols={3}>
+            <Input label="Entry Date" type="date" value="2025-03-11" required />
+            <Input label="Reference Type" type="select" options={["Purchase Order","Opening Stock","Sales Return","Adjustment","Manufacturing Output"]} required />
+            <Input label="Reference Number" placeholder="Link to PO-2025-0012" />
+            <Input label="Warehouse" type="select" options={["WH-AHM-01 (Main Warehouse)","WH-SRT-01 (Surat Store)"]} required />
+            <Input label="Supplier / Vendor" type="select" options={["National Office Supplies","Pharma Direct","(Direct Purchase)"]} />
+            <Input label="Vehicle / LR Number" placeholder="Lorry receipt (optional)" />
+          </FormSection>
+        </Card>
+        <Card>
+          <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <span style={{ fontSize:14, fontWeight:700 }}>Products to Receive</span>
+            <div style={{ display:"flex", gap:8 }}>
+              <Btn v="ghost" sm>📷 Scan Barcode</Btn>
+              <Btn v="outline" sm>+ Add Product</Btn>
+            </div>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1fr 1.2fr 1fr 0.5fr", padding:"8px 18px", background:C.bg, gap:8, fontSize:10, fontWeight:700, color:C.muted }}>
+            {["PRODUCT","QTY RECEIVED","UOM","PURCHASE COST","BATCH / EXPIRY",""].map((h,i)=><div key={i}>{h}</div>)}
+          </div>
+          {[
+            { name:"Office Chair — Ergonomic", sku:"FURN-CHR-001", qty:20, uom:"Piece", cost:"₹3,500", batch:false },
+            { name:"A4 Copier Paper (500 Sheets)", sku:"STAT-PPR-001", qty:100, uom:"Ream", cost:"₹180", batch:false },
+          ].map((p,i)=>(
+            <div key={i} style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1fr 1.2fr 1fr 0.5fr", padding:"12px 18px", borderBottom:`1px solid ${C.border}`, gap:8, alignItems:"center" }}>
+              <div>
+                <div style={{ fontWeight:600, fontSize:12 }}>{p.name}</div>
+                <div style={{ fontSize:10, color:C.muted }}>{p.sku} · Current stock: 45 units</div>
+              </div>
+              <div style={{ background:C.bg, borderRadius:6, padding:"6px 8px", fontSize:12, fontWeight:700, color:C.primary, border:`1px solid ${C.border}`, cursor:"text" }}>{p.qty}</div>
+              <div style={{ fontSize:12, color:C.muted }}>{p.uom}</div>
+              <div style={{ background:C.bg, borderRadius:6, padding:"6px 8px", fontSize:12, border:`1px solid ${C.border}`, cursor:"text" }}>{p.cost}</div>
+              <div style={{ fontSize:11, color:C.muted, background:C.bg, padding:"6px 8px", borderRadius:6, border:`1px solid ${C.border}` }}>— No batch</div>
+              <div style={{ color:C.danger, cursor:"pointer", textAlign:"center" }}>×</div>
+            </div>
+          ))}
+          <div style={{ padding:"12px 18px" }}>
+            <Btn v="ghost" sm>+ Add Another Product</Btn>
+          </div>
+        </Card>
+      </div>
+      {/* Summary */}
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:14 }}>📊 Entry Summary</div>
+          {[["Total Products","2 items"],["Total Qty","120 units"],["Total Value","₹88,000"],["Warehouse","WH-AHM-01"],["Reference","PO-2025-0012"]].map(([l,v])=>(
+            <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderBottom:`1px solid ${C.border}` }}>
+              <span style={{ fontSize:12, color:C.muted }}>{l}</span>
+              <span style={{ fontSize:12, fontWeight:600 }}>{v}</span>
+            </div>
+          ))}
+          <div style={{ marginTop:14, padding:12, background:C.success+"10", borderRadius:10, border:`1px solid ${C.success}30` }}>
+            <div style={{ fontSize:12, fontWeight:600, color:C.success }}>✓ Stock will be added immediately on confirmation</div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>A journal entry (Dr. Inventory, Cr. Payable) will be auto-created</div>
+          </div>
+          <Btn sm full style={{ marginTop:14 }}>✓ Confirm Stock In</Btn>
+        </Card>
+        <Card style={{ padding:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:12 }}>🚢 Landed Costs</div>
+          <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:12, marginBottom:10, cursor:"pointer" }}>
+            <input type="checkbox" /> Add freight / insurance / customs
+          </label>
+          <div style={{ opacity:0.5 }}>
+            <Input label="Cost Type" type="select" options={["Freight","Insurance","Customs","Other"]} />
+            <Input label="Amount (₹)" placeholder="Enter landed cost" />
+            <Input label="Distribute By" type="select" options={["By Quantity","By Value","By Weight"]} />
+          </div>
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
+// ── PAYROLL RUN ────────────────────────────────────────────────────
+const PayrollRun = ({ onNavigate }) => (
+  <div>
+    <PageHeader breadcrumb={["HR & Payroll","Payroll","Run Payroll"]}
+      title="Payroll Processing — March 2025"
+      sub="Review and process monthly payroll for all employees"
+      actions={[
+        <Btn v="muted" sm key="back" onClick={()=>onNavigate("hr-list")}>Cancel</Btn>,
+        <Btn v="warning" sm key="save">💾 Save Draft</Btn>,
+        <Btn sm key="process">⚡ Process Payroll</Btn>
+      ]}
+    />
+    <StatusStep steps={["Lock Attendance","Calculate Salaries","Review Sheet","Finance Approval","Process & Disburse"]} current={2} />
+    {/* Summary Cards */}
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:12, marginBottom:16 }}>
+      {[
+        ["👥","Employees","42","To be paid",C.primary],
+        ["📅","Working Days","26","Mar 2025",C.info],
+        ["💰","Gross Payroll","₹14,20,000","Before deductions",C.dark],
+        ["📉","Total Deductions","₹1,82,900","PF+TDS+PT",C.danger],
+        ["💳","Net Payroll","₹12,37,100","To be disbursed",C.success],
+      ].map(([icon,label,val,sub,c])=>(
+        <Card key={label} style={{ padding:16 }}>
+          <div style={{ fontSize:22 }}>{icon}</div>
+          <div style={{ fontSize:18, fontWeight:800, color:c, marginTop:8 }}>{val}</div>
+          <div style={{ fontSize:11, fontWeight:600, color:C.dark }}>{label}</div>
+          <div style={{ fontSize:10, color:C.muted }}>{sub}</div>
+        </Card>
+      ))}
+    </div>
+    {/* Payroll Sheet */}
+    <Card>
+      <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontSize:14, fontWeight:700 }}>Payroll Sheet</span>
+        <div style={{ display:"flex", gap:8 }}>
+          <div style={{ padding:"7px 12px", background:C.bg, borderRadius:8, fontSize:12, color:C.muted, border:`1px solid ${C.border}` }}>🔍 Search employee...</div>
+          <Btn v="muted" sm>📤 Export Excel</Btn>
+        </div>
+      </div>
+      <TH cols={["EMPLOYEE","DEPT","DAYS","GROSS","PF (EMP)","ESI","TDS","PT","DEDUCTIONS","NET SALARY","STATUS"]} />
+      {[
+        { name:"Priya Sharma", dept:"Finance", days:26, gross:"₹60,000", pf:"₹2,880", esi:"—", tds:"₹3,250", pt:"₹200", ded:"₹6,330", net:"₹53,670", status:"Ready" },
+        { name:"Amit Patel", dept:"Sales", days:24, gross:"₹41,538", pf:"₹2,308", esi:"₹312", tds:"₹0", pt:"₹200", ded:"₹2,820", net:"₹38,718", status:"Ready" },
+        { name:"Neha Joshi", dept:"HR", days:23, gross:"₹37,154", pf:"₹2,077", esi:"₹279", tds:"₹0", pt:"₹200", ded:"₹2,556", net:"₹34,598", status:"Leave Deducted" },
+        { name:"Rahul Kumar", dept:"IT", days:26, gross:"₹75,000", pf:"₹3,600", esi:"—", tds:"₹5,800", pt:"₹200", ded:"₹9,600", net:"₹65,400", status:"Ready" },
+      ].map((e,i)=>(
+        <TR key={i} cols={[
+          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <Avatar name={e.name} size={28} color={[C.primary,C.purple,C.success,C.warning][i]} />
+            <span style={{ fontWeight:600, fontSize:12 }}>{e.name}</span>
+          </div>,
+          <Badge c={C.primary}>{e.dept}</Badge>,
+          <span style={{ fontWeight:600 }}>{e.days}/26</span>,
+          <b style={{ color:C.dark }}>{e.gross}</b>,
+          e.pf, e.esi, e.tds, e.pt,
+          <b style={{ color:C.danger }}>{e.ded}</b>,
+          <b style={{ color:C.success }}>{e.net}</b>,
+          <Badge c={e.status==="Ready"?C.success:C.warning}>{e.status}</Badge>
+        ]} />
+      ))}
+    </Card>
+  </div>
+);
+
+// ── PURCHASE ORDER FORM ───────────────────────────────────────────
+const POCreate = ({ onNavigate }) => (
+  <div>
+    <PageHeader breadcrumb={["Purchase","Purchase Orders","New PO"]}
+      title="Create Purchase Order" sub="PO-2025-0013 (Auto-generated)"
+      actions={[
+        <Btn v="muted" sm key="back" onClick={()=>onNavigate("po-list")}>Cancel</Btn>,
+        <Btn v="outline" sm key="draft">Save Draft</Btn>,
+        <Btn v="warning" sm key="confirm">Confirm PO</Btn>,
+        <Btn sm key="send">✉ Confirm & Send to Vendor</Btn>
+      ]}
+    />
+    <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:14 }}>
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <FormSection title="Order Details" icon="🛒" cols={3}>
+            <Input label="Vendor" type="select" options={["National Office Supplies Co.","Pharma Direct Pvt.","Tech World India"]} required />
+            <Input label="PO Date" type="date" value="2025-03-11" required />
+            <Input label="Expected Delivery" type="date" value="2025-03-21" required />
+            <Input label="Delivery To (Warehouse)" type="select" options={["WH-AHM-01 — Main Warehouse","WH-SRT-01 — Surat Store"]} />
+            <Input label="Payment Terms" type="select" options={["Net 30","Net 15","Immediate","Net 60"]} />
+            <Input label="Source PR" placeholder="Link to PR-2025-0018 (optional)" />
+          </FormSection>
+        </Card>
+        {/* Items */}
+        <Card style={{ marginBottom:14 }}>
+          <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <span style={{ fontSize:14, fontWeight:700 }}>Order Items</span>
+            <Btn v="outline" sm>+ Add Item</Btn>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 0.5fr", padding:"8px 18px", background:C.bg, gap:8, fontSize:10, fontWeight:700, color:C.muted }}>
+            {["PRODUCT","QTY","UNIT PRICE","DISC %","TAX","TOTAL",""].map((h,i)=><div key={i}>{h}</div>)}
+          </div>
+          {[
+            { name:"Office Chair — Ergonomic", sku:"FURN-CHR-001", qty:20, price:3500, disc:0, tax:18 },
+            { name:"A4 Copier Paper (500 Sheets)", sku:"STAT-PPR-001", qty:100, price:180, disc:5, tax:12 },
+          ].map((it,i)=>{
+            const t = it.qty*it.price*(1-it.disc/100)*(1+it.tax/100);
+            return (
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"3fr 1fr 1.2fr 0.8fr 0.8fr 1.2fr 0.5fr", padding:"10px 18px", borderBottom:`1px solid ${C.border}`, gap:8, alignItems:"center" }}>
+                <div><div style={{ fontWeight:600, fontSize:12 }}>{it.name}</div><div style={{ fontSize:10, color:C.muted }}>{it.sku}</div></div>
+                {[it.qty, `₹${it.price.toLocaleString()}`, `${it.disc}%`, `${it.tax}%`].map((v,j)=>(
+                  <div key={j} style={{ background:C.bg, borderRadius:6, padding:"6px 8px", fontSize:12, border:`1px solid ${C.border}` }}>{v}</div>
+                ))}
+                <b style={{ color:C.primary, fontSize:12 }}>₹{t.toLocaleString("en-IN",{maximumFractionDigits:0})}</b>
+                <span style={{ color:C.danger, cursor:"pointer", textAlign:"center" }}>×</span>
+              </div>
+            );
+          })}
+        </Card>
+      </div>
+      {/* Right Summary */}
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>PO Summary</div>
+          {[["Subtotal","₹1,07,100"],["Discount","−₹8,550"],["CGST","₹6,327"],["SGST","₹6,327"],["IGST","—"]].map(([l,v])=>(
+            <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
+              <span style={{ fontSize:12, color:C.muted }}>{l}</span>
+              <span style={{ fontSize:12 }}>{v}</span>
+            </div>
+          ))}
+          <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0 0" }}>
+            <span style={{ fontSize:15, fontWeight:800 }}>Grand Total</span>
+            <span style={{ fontSize:18, fontWeight:800, color:C.primary }}>₹1,11,204</span>
+          </div>
+        </Card>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>💰 Advance Payment</div>
+          <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:12, marginBottom:10, cursor:"pointer" }}>
+            <input type="checkbox" /> Vendor requires advance payment
+          </label>
+          <Input label="Advance %" placeholder="e.g. 30%" hint="Amount: ₹33,361" />
+        </Card>
+        <Card style={{ padding:20 }}>
+          <Input label="Terms & Conditions" type="textarea" rows={3} placeholder="Delivery, warranty, payment terms..." />
+          <Input label="Internal Notes" type="textarea" rows={2} placeholder="For your team only..." />
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
+// ── JOURNAL ENTRY ──────────────────────────────────────────────────
+const JournalEntry = ({ onNavigate }) => {
+  const lines = [
+    { account:"1100 — Accounts Receivable", dr:"63,398", cr:"" },
+    { account:"4001 — Sales Revenue", dr:"", cr:"54,400" },
+    { account:"2100 — GST Payable (Output)", dr:"", cr:"8,998" },
+  ];
+  const totDr = 63398, totCr = 63398;
+  return (
+    <div>
+      <PageHeader breadcrumb={["Finance","Journal Entries","New Entry"]}
+        title="Journal Entry" sub="JV-2025-0043 — Manual Entry"
+        actions={[
+          <Btn v="muted" sm key="back" onClick={()=>onNavigate("finance")}>Cancel</Btn>,
+          <Btn v="outline" sm key="draft">Save Draft</Btn>,
+          <Btn sm key="post" disabled={totDr!==totCr}>Post Entry</Btn>
+        ]}
+      />
+      <div style={{ display:"grid", gridTemplateColumns:"1.6fr 1fr", gap:14 }}>
+        <div>
+          <Card style={{ padding:20, marginBottom:14 }}>
+            <FormSection title="Entry Details" icon="📋" cols={3}>
+              <Input label="Journal Date" type="date" value="2025-03-11" required />
+              <Input label="Journal Type" type="select" options={["General Journal","Opening Entry","Closing Entry","Adjustment","Depreciation","Provision"]} required />
+              <Input label="Reference Number" placeholder="Invoice / PO / Bill ref." />
+              <div style={{ gridColumn:"1/-1" }}>
+                <Input label="Narration / Description" placeholder="Brief description of this entry..." required />
+              </div>
+              <Input label="Cost Center" type="select" options={["None","Finance Dept","Sales Dept","HR Dept"]} />
+            </FormSection>
+          </Card>
+          {/* Journal Lines */}
+          <Card>
+            <div style={{ padding:"14px 18px", borderBottom:`1px solid ${C.border}`, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <span style={{ fontSize:14, fontWeight:700 }}>Debit / Credit Lines</span>
+              <Btn v="outline" sm>+ Add Line</Btn>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"3fr 1.2fr 1.2fr 0.5fr", padding:"8px 18px", background:C.bg, gap:8, fontSize:10, fontWeight:700, color:C.muted }}>
+              {["ACCOUNT","DEBIT (₹)","CREDIT (₹)",""].map((h,i)=><div key={i}>{h}</div>)}
+            </div>
+            {lines.map((l,i)=>(
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"3fr 1.2fr 1.2fr 0.5fr", padding:"10px 18px", borderBottom:`1px solid ${C.border}`, gap:8, alignItems:"center" }}>
+                <div style={{ background:C.bg, borderRadius:6, padding:"7px 10px", fontSize:12, border:`1px solid ${C.border}`, color:C.text }}>{l.account}</div>
+                <div style={{ background:l.dr?C.success+"10":C.bg, borderRadius:6, padding:"7px 10px", fontSize:12, fontWeight:l.dr?700:400, color:l.dr?C.success:C.muted, border:`1px solid ${l.dr?C.success+"40":C.border}`, textAlign:"right" }}>{l.dr || "—"}</div>
+                <div style={{ background:l.cr?C.danger+"10":C.bg, borderRadius:6, padding:"7px 10px", fontSize:12, fontWeight:l.cr?700:400, color:l.cr?C.danger:C.muted, border:`1px solid ${l.cr?C.danger+"40":C.border}`, textAlign:"right" }}>{l.cr || "—"}</div>
+                <div style={{ color:C.danger, cursor:"pointer", textAlign:"center" }}>×</div>
+              </div>
+            ))}
+            {/* Totals */}
+            <div style={{ display:"grid", gridTemplateColumns:"3fr 1.2fr 1.2fr 0.5fr", padding:"12px 18px", background:C.bg, gap:8 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.dark }}>TOTALS</div>
+              <div style={{ textAlign:"right", fontWeight:800, fontSize:13, color:C.success }}>₹{totDr.toLocaleString()}</div>
+              <div style={{ textAlign:"right", fontWeight:800, fontSize:13, color:C.danger }}>₹{totCr.toLocaleString()}</div>
+              <div />
+            </div>
+            {totDr===totCr ? (
+              <div style={{ margin:"0 18px 14px", padding:"8px 12px", background:C.success+"10", borderRadius:8, border:`1px solid ${C.success}30`, fontSize:12, color:C.success, fontWeight:600 }}>
+                ✓ Entry is balanced (Dr = Cr = ₹{totDr.toLocaleString()})
+              </div>
+            ) : (
+              <div style={{ margin:"0 18px 14px", padding:"8px 12px", background:C.danger+"10", borderRadius:8, border:`1px solid ${C.danger}30`, fontSize:12, color:C.danger, fontWeight:600 }}>
+                ✗ Entry is NOT balanced — Difference: ₹{Math.abs(totDr-totCr).toLocaleString()}
+              </div>
+            )}
+          </Card>
+        </div>
+        <div>
+          <Card style={{ padding:20, marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>📊 Balance Indicator</div>
+            <div style={{ textAlign:"center", padding:20 }}>
+              <div style={{ fontSize:36, fontWeight:900, color:totDr===totCr?C.success:C.danger }}>{totDr===totCr?"✓":"✗"}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:totDr===totCr?C.success:C.danger, marginTop:8 }}>{totDr===totCr?"Balanced":"Unbalanced"}</div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginTop:16 }}>
+                <div style={{ padding:12, background:C.success+"10", borderRadius:10 }}>
+                  <div style={{ fontSize:16, fontWeight:800, color:C.success }}>₹{totDr.toLocaleString()}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>Total Debit</div>
+                </div>
+                <div style={{ padding:12, background:C.danger+"10", borderRadius:10 }}>
+                  <div style={{ fontSize:16, fontWeight:800, color:C.danger }}>₹{totCr.toLocaleString()}</div>
+                  <div style={{ fontSize:10, color:C.muted }}>Total Credit</div>
+                </div>
+              </div>
+            </div>
+          </Card>
+          <Card style={{ padding:20 }}>
+            <div style={{ fontSize:13, fontWeight:700, marginBottom:12 }}>📎 Supporting Documents</div>
+            <div style={{ border:`2px dashed ${C.border}`, borderRadius:10, padding:20, textAlign:"center", cursor:"pointer" }}>
+              <div style={{ fontSize:28 }}>📁</div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:8 }}>Attach vouchers, bills, receipts</div>
+              <Btn v="outline" sm style={{ marginTop:10 }}>Browse Files</Btn>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── LEAVE APPLICATION ──────────────────────────────────────────────
+const LeaveForm = ({ onNavigate }) => (
+  <div>
+    <PageHeader breadcrumb={["HR & Payroll","Leave Management","Apply Leave"]}
+      title="Apply for Leave" sub="Submit leave request for manager approval"
+      actions={[
+        <Btn v="muted" sm key="back" onClick={()=>onNavigate("hr-list")}>Cancel</Btn>,
+        <Btn sm key="submit">📤 Submit Request</Btn>
+      ]}
+    />
+    <div style={{ display:"grid", gridTemplateColumns:"1.4fr 1fr", gap:14 }}>
+      <Card style={{ padding:24 }}>
+        <FormSection title="Leave Details" icon="🏖️" cols={2}>
+          <Input label="Employee" type="select" options={["Priya Sharma (EMP-0001)","Amit Patel (EMP-0002)","Neha Joshi (EMP-0003)"]} required />
+          <Input label="Leave Type" type="select" options={["Casual Leave (Balance: 8 days)","Sick Leave (Balance: 12 days)","Earned Leave (Balance: 15 days)","Compensatory Off (Balance: 1 day)"]} required />
+          <Input label="From Date" type="date" value="2025-03-14" required />
+          <Input label="To Date" type="date" value="2025-03-15" required />
+          <div style={{ gridColumn:"1/-1" }}>
+            <label style={{ display:"flex", gap:8, alignItems:"center", fontSize:12, cursor:"pointer", marginBottom:10 }}>
+              <input type="checkbox" /> Half-day leave
+            </label>
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <Input label="Reason" type="textarea" placeholder="Provide reason for leave..." required rows={3} />
+          </div>
+          <div style={{ gridColumn:"1/-1" }}>
+            <Input label="Supporting Document" type="select" options={["No attachment","Upload medical certificate","Upload other document"]} hint="Required for sick leave > 2 days" />
+          </div>
+        </FormSection>
+      </Card>
+      <div>
+        <Card style={{ padding:20, marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>📊 Leave Balance Summary</div>
+          {[
+            { type:"Casual Leave", bal:8, total:12, color:C.success },
+            { type:"Sick Leave", bal:12, total:12, color:C.info },
+            { type:"Earned Leave", bal:15, total:15, color:C.primary },
+            { type:"Comp Off", bal:1, total:2, color:C.warning },
+          ].map((l,i)=>(
+            <div key={i} style={{ marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                <span style={{ fontSize:12, fontWeight:600 }}>{l.type}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:l.color }}>{l.bal}/{l.total} days</span>
+              </div>
+              <MiniBar value={l.bal} max={l.total} color={l.color} />
+            </div>
+          ))}
+        </Card>
+        <Card style={{ padding:20 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>📅 Leave Preview</div>
+          <div style={{ background:C.primaryLight, borderRadius:10, padding:14 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+              <span style={{ fontSize:12, color:C.muted }}>Duration</span>
+              <span style={{ fontSize:13, fontWeight:700, color:C.primary }}>2 Days</span>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+              <span style={{ fontSize:12, color:C.muted }}>Type</span>
+              <span style={{ fontSize:12, fontWeight:600 }}>Casual Leave</span>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+              <span style={{ fontSize:12, color:C.muted }}>Balance After</span>
+              <span style={{ fontSize:13, fontWeight:700, color:C.success }}>6 days remaining</span>
+            </div>
+            <div style={{ display:"flex", justifyContent:"space-between" }}>
+              <span style={{ fontSize:12, color:C.muted }}>Approval To</span>
+              <span style={{ fontSize:12 }}>Rahul Kumar (Manager)</span>
+            </div>
+          </div>
+          <div style={{ marginTop:14, padding:10, background:C.warning+"10", borderRadius:8, fontSize:11, color:C.warning, fontWeight:600 }}>
+            ⚠️ 1 team member (Amit Patel) also on leave on Mar 14. Manager approval required.
+          </div>
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════════════════
+const screens = {
+  "customer-list": { comp: CustomerList, label:"CRM → Customers", mod:"crm" },
+  "customer-view": { comp: CustomerView, label:"Customer 360° Profile", mod:"crm" },
+  "customer-add":  { comp: (p)=><CustomerForm mode="add" {...p} />, label:"Add Customer", mod:"crm" },
+  "customer-edit": { comp: (p)=><CustomerForm mode="edit" {...p} />, label:"Edit Customer", mod:"crm" },
+  "invoice-create":{ comp: InvoiceCreate, label:"Create Invoice", mod:"sales" },
+  "sales-list":    { comp: ({onNavigate})=><div><PageHeader title="Sales & Invoicing" breadcrumb={["Sales","Invoices"]} actions={[<Btn sm onClick={()=>onNavigate("invoice-create")}>+ Create Invoice</Btn>]} /><Card style={{ padding:40, textAlign:"center", color:C.muted }}>← Use sidebar to navigate</Card></div>, label:"Sales List", mod:"sales" },
+  "product-list":  { comp: ProductList, label:"Inventory → Products", mod:"inventory" },
+  "product-add":   { comp: ProductForm, label:"Add Product", mod:"inventory" },
+  "product-edit":  { comp: ProductForm, label:"Edit Product", mod:"inventory" },
+  "stock-in":      { comp: StockIn, label:"Stock In Entry", mod:"inventory" },
+  "po-list":       { comp: ({onNavigate})=><div><PageHeader title="Purchase Orders" breadcrumb={["Purchase","Orders"]} actions={[<Btn sm onClick={()=>onNavigate("po-create")}>+ Create PO</Btn>]} /><Card style={{ padding:40, textAlign:"center", color:C.muted }}>Select from sidebar</Card></div>, label:"PO List", mod:"purchase" },
+  "po-create":     { comp: POCreate, label:"Create Purchase Order", mod:"purchase" },
+  "journal-entry": { comp: JournalEntry, label:"Journal Entry", mod:"finance" },
+  "finance":       { comp: ({onNavigate})=><div><PageHeader title="Finance" breadcrumb={["Finance"]} actions={[<Btn sm onClick={()=>onNavigate("journal-entry")}>+ Journal Entry</Btn>]} /><Card style={{ padding:40, textAlign:"center", color:C.muted }}>Select from sidebar</Card></div>, label:"Finance", mod:"finance" },
+  "hr-list":       { comp: ({onNavigate})=><div><PageHeader title="HR & Payroll" breadcrumb={["HR"]} actions={[<Btn sm onClick={()=>onNavigate("leave-apply")}>Apply Leave</Btn>,<Btn v="warning" sm style={{ marginLeft:8 }} onClick={()=>onNavigate("payroll-run")}>Run Payroll</Btn>]} /><Card style={{ padding:40, textAlign:"center", color:C.muted }}>Select from sidebar</Card></div>, label:"HR", mod:"hr" },
+  "payroll-run":   { comp: PayrollRun, label:"Payroll Run", mod:"hr" },
+  "leave-apply":   { comp: LeaveForm, label:"Apply Leave", mod:"hr" },
+};
+
+const navGroups = [
+  { mod:"crm", icon:"👥", label:"CRM", items:[
+    { id:"customer-list", label:"Customer List" },
+    { id:"customer-add", label:"Add Customer" },
+    { id:"customer-view", label:"Customer Profile" },
+  ]},
+  { mod:"sales", icon:"🧾", label:"Sales", items:[
+    { id:"sales-list", label:"Invoice List" },
+    { id:"invoice-create", label:"Create Invoice" },
+  ]},
+  { mod:"inventory", icon:"📦", label:"Inventory", items:[
+    { id:"product-list", label:"Product List" },
+    { id:"product-add", label:"Add Product" },
+    { id:"stock-in", label:"Stock In Entry" },
+  ]},
+  { mod:"purchase", icon:"🛒", label:"Purchase", items:[
+    { id:"po-list", label:"PO List" },
+    { id:"po-create", label:"Create PO" },
+  ]},
+  { mod:"finance", icon:"💰", label:"Finance", items:[
+    { id:"finance", label:"Finance Home" },
+    { id:"journal-entry", label:"Journal Entry" },
+  ]},
+  { mod:"hr", icon:"👨‍💼", label:"HR & Payroll", items:[
+    { id:"hr-list", label:"HR Home" },
+    { id:"payroll-run", label:"Run Payroll" },
+    { id:"leave-apply", label:"Apply Leave" },
+  ]},
+];
+
+export default function App() {
+  const [active, setActive] = useState("customer-list");
+  const [navData, setNavData] = useState(null);
+  const [expandedMod, setExpandedMod] = useState("crm");
+
+  const navigate = (screen, data) => { setActive(screen); setNavData(data||null); };
+  const ActiveComp = screens[active]?.comp;
+
+  return (
+    <div style={{ display:"flex", height:"100vh", fontFamily:"'Inter',system-ui,sans-serif", background:C.bg, overflow:"hidden" }}>
+      {/* SIDEBAR */}
+      <div style={{ width:220, background:C.sidebar, display:"flex", flexDirection:"column", flexShrink:0 }}>
+        <div style={{ padding:"18px 20px", borderBottom:"1px solid #334155", display:"flex", gap:10, alignItems:"center" }}>
+          <div style={{ width:32, height:32, borderRadius:10, background:"linear-gradient(135deg,#6366f1,#8b5cf6)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>⚡</div>
+          <div><div style={{ fontSize:14, fontWeight:800, color:"#fff" }}>SmartHub ERP</div><div style={{ fontSize:10, color:"#64748b" }}>CRUD & Transactions</div></div>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"10px 8px" }}>
+          {navGroups.map(g=>(
+            <div key={g.mod}>
+              <div onClick={()=>setExpandedMod(expandedMod===g.mod?null:g.mod)}
+                style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px", borderRadius:8, cursor:"pointer", marginBottom:2, background:expandedMod===g.mod?"#334155":"transparent" }}>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <span style={{ fontSize:14 }}>{g.icon}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:expandedMod===g.mod?"#fff":"#94a3b8" }}>{g.label}</span>
+                </div>
+                <span style={{ color:"#64748b", fontSize:10 }}>{expandedMod===g.mod?"▾":"›"}</span>
+              </div>
+              {expandedMod===g.mod && g.items.map(item=>(
+                <div key={item.id} onClick={()=>navigate(item.id)}
+                  style={{ padding:"7px 12px 7px 34px", borderRadius:7, cursor:"pointer", fontSize:12,
+                    background:active===item.id?"#6366f1":"transparent",
+                    color:active===item.id?"#fff":"#94a3b8", marginBottom:1, fontWeight:active===item.id?600:400 }}>
+                  {item.label}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div style={{ padding:"12px 16px", borderTop:"1px solid #334155", display:"flex", gap:10, alignItems:"center" }}>
+          <Avatar name="Rajesh Kumar" size={30} color={C.primary} />
+          <div><div style={{ fontSize:11, fontWeight:600, color:"#fff" }}>Rajesh Kumar</div><div style={{ fontSize:10, color:"#64748b" }}>Owner</div></div>
+        </div>
+      </div>
+      {/* MAIN */}
+      <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        {/* Topbar */}
+        <div style={{ height:52, background:C.white, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", padding:"0 20px", gap:10 }}>
+          <div style={{ background:C.bg, borderRadius:8, padding:"7px 14px", fontSize:12, color:C.muted, display:"flex", gap:8, flex:1, maxWidth:360, border:`1px solid ${C.border}` }}>
+            <span>🔍</span><span>Search transactions, records...</span>
+          </div>
+          <div style={{ flex:1 }} />
+          <Badge c={C.success}>● Growth Plan</Badge>
+          <div style={{ width:32, height:32, borderRadius:8, background:C.bg, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", border:`1px solid ${C.border}`, position:"relative" }}>
+            🔔<div style={{ position:"absolute", top:4, right:4, width:8, height:8, background:C.danger, borderRadius:"50%" }}/>
+          </div>
+          <Avatar name="Rajesh Kumar" size={32} color={C.primary} />
+        </div>
+        {/* Content */}
+        <div style={{ flex:1, overflowY:"auto", padding:24, background:C.bg }}>
+          {ActiveComp && <ActiveComp onNavigate={navigate} data={navData} />}
+        </div>
+      </div>
+    </div>
+  );
+}
