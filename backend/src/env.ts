@@ -10,6 +10,10 @@ const schema = z.object({
   KAFKA_BROKERS: z.string().min(1),
   CORS_ORIGIN: z.string().optional(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
+  JWT_SECRET: z.string().min(10).default('dev-secret-change-me'),
+  JWT_EXPIRES: z.string().default('1h'),
+  SWAGGER_ENABLED: z.enum(['true', 'false']).default('true'),
+  SWAGGER_PATH: z.string().default('docs'),
 });
 
 export type Env = z.infer<typeof schema> & { kafkaBrokersList: string[] };

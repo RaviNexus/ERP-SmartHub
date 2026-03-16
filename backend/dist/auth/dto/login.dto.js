@@ -9,28 +9,21 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseService = void 0;
-const common_1 = require("@nestjs/common");
-const pg_1 = require("pg");
-const config_service_1 = require("./config.service");
-let DatabaseService = class DatabaseService {
-    pool;
-    constructor(config) {
-        this.pool = new pg_1.Pool({ connectionString: config.databaseUrl });
-    }
-    async query(text, params) {
-        return this.pool.query(text, params);
-    }
-    async ping() {
-        const result = await this.pool.query('select 1');
-        return result.rowCount === 1;
-    }
-    async onModuleDestroy() {
-        await this.pool.end();
-    }
-};
-exports.DatabaseService = DatabaseService;
-exports.DatabaseService = DatabaseService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_service_1.ConfigService])
-], DatabaseService);
+exports.LoginDto = void 0;
+const class_validator_1 = require("class-validator");
+const swagger_decorators_1 = require("../../swagger.decorators");
+class LoginDto {
+    email;
+    password;
+}
+exports.LoginDto = LoginDto;
+__decorate([
+    (0, swagger_decorators_1.ApiProperty)({ example: 'asha@company.com' }),
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], LoginDto.prototype, "email", void 0);
+__decorate([
+    (0, swagger_decorators_1.ApiProperty)({ example: 'S3cureP@ssw0rd' }),
+    (0, class_validator_1.MinLength)(8),
+    __metadata("design:type", String)
+], LoginDto.prototype, "password", void 0);

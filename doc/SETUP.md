@@ -52,7 +52,8 @@ docker compose -f docker-compose.app.yml up --build
 ## Notes / Gotchas
 - PowerShell: use `pnpm.cmd` and semicolons; don’t chain with `&&`.
 - If Nest dev fails with missing types for pg, ensure `@types/pg` is installed (already in package.json) and re-run `pnpm.cmd install --filter erp-backend`.
-- Peer-dep warnings (React 19 vs Mantine 7, ESLint 9 vs @typescript-eslint 7) are known and non-blocking for dev.
+- Swagger UI is available at `http://localhost:3000/docs` when `SWAGGER_ENABLED=true`. It requires `@nestjs/swagger` to be installed; if your network blocks it, install later and it will auto-enable.
+- Peer-dep warnings (React 18 + Mantine 7, ESLint 8 + @typescript-eslint 7) are expected and non-blocking.
 
 ## Maintenance
 - Stop infra only: `docker compose down`

@@ -12,6 +12,10 @@ const schema = zod_1.z.object({
     KAFKA_BROKERS: zod_1.z.string().min(1),
     CORS_ORIGIN: zod_1.z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: zod_1.z.string().optional(),
+    JWT_SECRET: zod_1.z.string().min(10).default('dev-secret-change-me'),
+    JWT_EXPIRES: zod_1.z.string().default('1h'),
+    SWAGGER_ENABLED: zod_1.z.enum(['true', 'false']).default('true'),
+    SWAGGER_PATH: zod_1.z.string().default('docs'),
 });
 const loadEnv = () => {
     const parsed = schema.safeParse(process.env);

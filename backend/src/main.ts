@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { ConfigService } from './config.service';
+import { setupSwagger } from './swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +13,8 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
   app.enableCors({ origin: config.corsOrigin ?? true, credentials: true });
+
+  await setupSwagger(app, config);
 
   await app.listen(config.port);
   // eslint-disable-next-line no-console

@@ -29,6 +29,18 @@ let ConfigService = class ConfigService {
     get corsOrigin() {
         return this.env.CORS_ORIGIN;
     }
+    get jwtSecret() {
+        return this.env.JWT_SECRET;
+    }
+    get jwtExpires() {
+        return this.env.JWT_EXPIRES;
+    }
+    get swaggerEnabled() {
+        return this.env.SWAGGER_ENABLED === 'true';
+    }
+    get swaggerPath() {
+        return this.env.SWAGGER_PATH;
+    }
 };
 exports.ConfigService = ConfigService;
 exports.ConfigService = ConfigService = __decorate([

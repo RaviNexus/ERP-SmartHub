@@ -9,28 +9,25 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseService = void 0;
+exports.JwtStrategy = void 0;
 const common_1 = require("@nestjs/common");
-const pg_1 = require("pg");
-const config_service_1 = require("./config.service");
-let DatabaseService = class DatabaseService {
-    pool;
+const passport_1 = require("@nestjs/passport");
+const passport_jwt_1 = require("passport-jwt");
+const config_service_1 = require("../../config.service");
+let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(passport_jwt_1.Strategy) {
     constructor(config) {
-        this.pool = new pg_1.Pool({ connectionString: config.databaseUrl });
+        super({
+            jwtFromRequest: passport_jwt_1.ExtractJwt.fromAuthHeaderAsBearerToken(),
+            ignoreExpiration: false,
+            secretOrKey: config.jwtSecret,
+        });
     }
-    async query(text, params) {
-        return this.pool.query(text, params);
-    }
-    async ping() {
-        const result = await this.pool.query('select 1');
-        return result.rowCount === 1;
-    }
-    async onModuleDestroy() {
-        await this.pool.end();
+    async validate(payload) {
+        return { userId: payload.sub, email: payload.email, tenantId: payload.tenantId };
     }
 };
-exports.DatabaseService = DatabaseService;
-exports.DatabaseService = DatabaseService = __decorate([
+exports.JwtStrategy = JwtStrategy;
+exports.JwtStrategy = JwtStrategy = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [config_service_1.ConfigService])
-], DatabaseService);
+], JwtStrategy);

@@ -8,6 +8,7 @@ const common_1 = require("@nestjs/common");
 const helmet_1 = __importDefault(require("helmet"));
 const app_module_1 = require("./app.module");
 const config_service_1 = require("./config.service");
+const swagger_1 = require("./swagger");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.enableShutdownHooks();
@@ -15,6 +16,7 @@ async function bootstrap() {
     app.useGlobalPipes(new common_1.ValidationPipe({ whitelist: true, transform: true }));
     const config = app.get(config_service_1.ConfigService);
     app.enableCors({ origin: config.corsOrigin ?? true, credentials: true });
+    await (0, swagger_1.setupSwagger)(app, config);
     await app.listen(config.port);
     // eslint-disable-next-line no-console
     console.log(`${config.appName} listening on http://localhost:${config.port}`);
